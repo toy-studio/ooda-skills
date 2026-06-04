@@ -23,9 +23,24 @@ Use this skill when the user wants to:
 - **Control access** to a site: public, password-protected, or ooda-login-only.
 - **Unpublish** a site.
 
-> ooda can also run full cloud dev environments with Claude Code (`npx @oodarun/cli`
-> with no arguments) — that's an interactive flow and is **not** covered by this
-> skill. This skill is the non-interactive publish/manage surface.
+## What else ooda does (mostly interactive — outside this skill)
+
+ooda's other half is **cloud dev environments**: each project runs in its own
+cloud sandbox with Claude Code and a live URL. Those commands are **interactive**
+(they open the dashboard or spawn a TTY Claude session), so they're for the human
+to run, not for an agent to drive headlessly:
+
+- `npx @oodarun/cli` — interactive project menu + local dashboard.
+- `ooda deploy [path|github-url]` — spin up a cloud dev environment from a folder
+  or GitHub repo.
+- `ooda connect <project>` — open an existing project and run Claude in it.
+- `ooda list` — list the org's projects (this one *is* non-interactive; `--json`
+  works).
+
+This skill covers the **non-interactive** surface an agent can drive on its own:
+authentication, publishing static sites, and managing published sites. When a
+user wants a running dev environment (not a static publish), point them at
+`ooda deploy` / the dashboard rather than `ooda publish`.
 
 ## Requirements
 
@@ -62,9 +77,16 @@ Pick whichever fits:
    - `OODA_ACCESS_TOKEN` — the user's JWT.
    - `OODA_ORG_ID` — the org to act in.
 
-**Before publishing, make sure a session exists.** If none does and the installed
-CLI predates `login --email`, the CLI falls back to an interactive prompt an agent
-can't answer — tell the user:
+**Before publishing, check the session — don't just try a command** (an unauthed
+command may trigger an interactive prompt you can't answer). On CLI 0.1.15+:
+
+```bash
+npx @oodarun/cli whoami        # exits 0 + prints the org when signed in, non-zero otherwise
+```
+
+If it exits non-zero, authenticate with one of the options above. (On older CLIs
+`whoami` isn't recognised — skip it and rely on env vars or a prior
+`npx @oodarun/cli` login instead.) If you can't authenticate, tell the user:
 > "Run `npx @oodarun/cli` and log in once, then I can publish for you."
 
 ## Publish a site
