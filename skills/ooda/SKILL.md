@@ -58,12 +58,12 @@ repo README).
 ooda commands need an org session — an **existing** account (signup is invite-only).
 Pick whichever fits:
 
-1. **Email-code login — agent-drivable** *(requires the next CLI release, 0.1.15+)*.
+1. **Email-code login — agent-drivable** (recommended; CLI 0.1.15+).
    You can run the whole login from chat — no password, no terminal prompt:
    ```bash
-   npx @oodarun/cli login --email <their-email>            # emails a 6-digit code
+   npx @oodarun/cli@latest login --email <their-email>            # emails a 6-digit code
    # ask the user for the code from their inbox, then:
-   npx @oodarun/cli login --email <their-email> --code <code> [--org <id>] [--json]
+   npx @oodarun/cli@latest login --email <their-email> --code <code> [--org <id>] [--json]
    ```
    On success a session is saved to `~/.ooda/auth.json` and reused by every later
    command. If the account is in several orgs, pass `--org <id>` (the error lists
@@ -78,15 +78,14 @@ Pick whichever fits:
    - `OODA_ORG_ID` — the org to act in.
 
 **Before publishing, check the session — don't just try a command** (an unauthed
-command may trigger an interactive prompt you can't answer). On CLI 0.1.15+:
+command may trigger an interactive prompt you can't answer):
 
 ```bash
-npx @oodarun/cli whoami        # exits 0 + prints the org when signed in, non-zero otherwise
+npx @oodarun/cli@latest whoami   # exits 0 + prints the org when signed in, non-zero otherwise
 ```
 
-If it exits non-zero, authenticate with one of the options above. (On older CLIs
-`whoami` isn't recognised — skip it and rely on env vars or a prior
-`npx @oodarun/cli` login instead.) If you can't authenticate, tell the user:
+If it exits non-zero, authenticate with one of the options above. If you can't,
+tell the user:
 > "Run `npx @oodarun/cli` and log in once, then I can publish for you."
 
 ## Publish a site
