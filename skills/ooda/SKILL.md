@@ -65,6 +65,10 @@ Pick whichever fits:
    # ask the user for the code from their inbox, then:
    npx @oodarun/cli@latest login --email <their-email> --code <code> [--org <id>] [--json]
    ```
+   **Ask the user which email their ooda account uses — do NOT guess it** (e.g.
+   from git config or the repo). A wrong address silently sends nothing (the
+   endpoint never reveals whether an account exists), so a guess just wastes a
+   round-trip. If they've logged in before, `ooda whoami` prints the account email.
    On success a session is saved to `~/.ooda/auth.json` and reused by every later
    command. If the account is in several orgs, pass `--org <id>` (the error lists
    the options).
