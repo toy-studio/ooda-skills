@@ -91,14 +91,20 @@ tell the user:
 ## Publish a site
 
 ```bash
-npx @oodarun/cli publish [path] [--slug <slug>] [--json]
+# Run from the PROJECT ROOT — not the build folder.
+npx @oodarun/cli@latest publish [--slug <slug>] [--json]
 ```
 
 - Publishes an **already-built** static site — it does **not** run your build.
   Run the project's build first (`npm run build`, `pnpm build`, etc.).
-- `[path]` is the project directory (default: current dir). The CLI auto-detects
-  the build output, looking for `dist`, `build`, `out`, `.output/public`, or
-  `.next/static`.
+- **Run it from the project root and let it auto-detect the build output**
+  (`dist`, `build`, `out`, `.output/public`, or `.next/static`). The optional
+  `[path]` argument is the **project directory**, not the build folder — it
+  defaults to the current dir.
+  - ✅ `npx @oodarun/cli@latest publish` (in the project root)
+  - ✅ `npx @oodarun/cli@latest publish ./my-app` (path to a project root)
+  - ❌ `npx @oodarun/cli@latest publish ./dist` — **wrong**: it looks for a build
+    dir *inside* `./dist` and fails. Don't pass the build folder.
 - On success it prints the live URL, e.g. `https://my-app-p.ooda.run`.
 - `--json` gives machine-readable output: `{ ok, url, slug, version, fileCount, totalSize }`.
 
