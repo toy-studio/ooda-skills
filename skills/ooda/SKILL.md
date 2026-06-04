@@ -5,7 +5,7 @@ description: >
   the user wants to publish a built static site or SPA to a shareable
   {slug}-p.ooda.run URL, list/update/unpublish their published sites, or set
   per-site access (public, password-protected, or ooda-login). Every command runs
-  non-interactively via `npx @oodarun/cli`, so an agent can drive the whole
+  non-interactively via the `ooda` CLI, so an agent can drive the whole
   lifecycle. Triggers: "publish this site", "put this online", "deploy my built
   site", "share this as a URL", "list my ooda sites", "password-protect / make
   public / unpublish a site".
@@ -30,7 +30,7 @@ cloud sandbox with Claude Code and a live URL. Those commands are **interactive*
 (they open the dashboard or spawn a TTY Claude session), so they're for the human
 to run, not for an agent to drive headlessly:
 
-- `npx @oodarun/cli` — interactive project menu + local dashboard.
+- `ooda` — interactive project menu + local dashboard.
 - `ooda deploy [path|github-url]` — spin up a cloud dev environment from a folder
   or GitHub repo.
 - `ooda connect <project>` — open an existing project and run Claude in it.
@@ -42,13 +42,23 @@ authentication, publishing static sites, and managing published sites. When a
 user wants a running dev environment (not a static publish), point them at
 `ooda deploy` / the dashboard rather than `ooda publish`.
 
-## Requirements
+## Install
 
-- Node.js 20+ (so `npx` is available).
-- An ooda account that belongs to an organization — publishing is org-scoped.
+Install the CLI globally and use the `ooda` command — it prints an "update
+available" nudge when a newer version is published, so a global install won't go
+stale:
 
-No install step is required for the CLI itself: run `npx @oodarun/cli@latest
-<command>`. Optionally `npm install -g @oodarun/cli` for a shorter `ooda <command>`.
+```bash
+npm install -g @oodarun/cli
+```
+
+Requirements: Node.js 20+, and an ooda account in an organization (publishing is
+org-scoped).
+
+> You can also run without installing via `npx @oodarun/cli@latest <command>`,
+> but prefer the global `ooda` form: it's shorter, and it sidesteps
+> command-rewriting proxies/hooks that mangle `npx` (e.g. rewriting it to
+> `npm run`). All examples below use `ooda`.
 
 To (re)install this skill: `npx skills add toy-studio/ooda-skills -g` (see the
 repo README).
@@ -61,9 +71,9 @@ Pick whichever fits:
 1. **Email-code login — agent-drivable** (recommended; CLI 0.1.15+).
    You can run the whole login from chat — no password, no terminal prompt:
    ```bash
-   npx @oodarun/cli@latest login --email <their-email>            # emails a 6-digit code
+   ooda login --email <their-email>            # emails a 6-digit code
    # ask the user for the code from their inbox, then:
-   npx @oodarun/cli@latest login --email <their-email> --code <code> [--org <id>] [--json]
+   ooda login --email <their-email> --code <code> [--org <id>] [--json]
    ```
    **Ask the user which email their ooda account uses — do NOT guess it** (e.g.
    from git config or the repo). A wrong address silently sends nothing (the
@@ -73,9 +83,8 @@ Pick whichever fits:
    command. If the account is in several orgs, pass `--org <id>` (the error lists
    the options).
 
-2. **Saved login (any version).** The user runs `npx @oodarun/cli` (or
-   `npx @oodarun/cli login`) once and signs in interactively; the saved session is
-   reused afterwards.
+2. **Saved login (any version).** The user runs `ooda` (or `ooda login`) once and
+   signs in interactively; the saved session is reused afterwards.
 
 3. **Environment variables (headless / CI).** Set both and the CLI skips login:
    - `OODA_ACCESS_TOKEN` — the user's JWT.
@@ -85,18 +94,18 @@ Pick whichever fits:
 command may trigger an interactive prompt you can't answer):
 
 ```bash
-npx @oodarun/cli@latest whoami   # exits 0 + prints the org when signed in, non-zero otherwise
+ooda whoami   # exits 0 + prints the org when signed in, non-zero otherwise
 ```
 
 If it exits non-zero, authenticate with one of the options above. If you can't,
 tell the user:
-> "Run `npx @oodarun/cli` and log in once, then I can publish for you."
+> "Run `ooda` and log in once, then I can publish for you."
 
 ## Publish a site
 
 ```bash
 # Run from the PROJECT ROOT — not the build folder.
-npx @oodarun/cli@latest publish [--slug <slug>] [--json]
+ooda publish [--slug <slug>] [--json]
 ```
 
 - Publishes an **already-built** static site — it does **not** run your build.
@@ -105,10 +114,10 @@ npx @oodarun/cli@latest publish [--slug <slug>] [--json]
   (`dist`, `build`, `out`, `.output/public`, or `.next/static`). The optional
   `[path]` argument is the **project directory**, not the build folder — it
   defaults to the current dir.
-  - ✅ `npx @oodarun/cli@latest publish` (in the project root)
-  - ✅ `npx @oodarun/cli@latest publish ./my-app` (path to a project root)
-  - ❌ `npx @oodarun/cli@latest publish ./dist` — **wrong**: it looks for a build
-    dir *inside* `./dist` and fails. Don't pass the build folder.
+  - ✅ `ooda publish` (in the project root)
+  - ✅ `ooda publish ./my-app` (path to a project root)
+  - ❌ `ooda publish ./dist` — **wrong**: it looks for a build dir *inside*
+    `./dist` and fails. Don't pass the build folder.
 - On success it prints the live URL, e.g. `https://my-app-p.ooda.run`.
 - `--json` gives machine-readable output: `{ ok, url, slug, version, fileCount, totalSize }`.
 
@@ -137,11 +146,11 @@ can't be published as a static site.
 ## Manage published sites
 
 ```bash
-npx @oodarun/cli sites list [--json]
-npx @oodarun/cli sites access <slug> --mode <public|password|login> \
+ooda sites list [--json]
+ooda sites access <slug> --mode <public|password|login> \
     [--password <pw> | --clear-password] [--clear-mode] [--json]
-npx @oodarun/cli sites password <slug> [--json]
-npx @oodarun/cli sites delete <slug> [--json]
+ooda sites password <slug> [--json]
+ooda sites delete <slug> [--json]
 ```
 
 - **`sites list`** — every site in the org, with its URL, effective access mode,
@@ -163,31 +172,32 @@ error message. Add `--json` to any command for structured output.
 
 - After publishing, always share the live `https://<slug>-p.ooda.run` URL.
 - **New sites may default to `login` access** (org members only). If the user
-  wants it openly shareable, run
-  `npx @oodarun/cli sites access <slug> --mode public` and tell them it's now
-  public. If you leave it login-gated, tell them only members of their ooda org
-  can open it.
+  wants it openly shareable, run `ooda sites access <slug> --mode public` and tell
+  them it's now public. If you leave it login-gated, tell them only members of
+  their ooda org can open it.
 - For a **password**-protected site, share both the URL and the password.
 
 ## Full reference
 
 ```bash
-npx @oodarun/cli --help
+ooda --help
 ```
 
 ## Troubleshooting
 
+- **`npx` gets rewritten / "turned into npm run"** → a command-rewriting proxy or
+  hook is mangling `npx`. Install globally (`npm install -g @oodarun/cli`) and use
+  the `ooda` command, which isn't affected.
 - **It tries to prompt for a login** → no saved session and no env vars. Have the
-  user run `npx @oodarun/cli` and log in once, or set `OODA_ACCESS_TOKEN` +
-  `OODA_ORG_ID`.
-- **"No build output found"** → run the project's build first; the CLI publishes
-  the built output directory, not the source.
+  user run `ooda` and log in once, or set `OODA_ACCESS_TOKEN` + `OODA_ORG_ID`.
+- **"No build output found"** → run the project's build first, and run `ooda
+  publish` from the project root (not the build folder).
 - **"Slug … is taken by another organisation"** (only happens with an explicit
   `--slug`) → choose a different `--slug`, or omit it so the CLI picks a unique one.
 - **Visiting the URL loops or shows "you don't have access"** → the site is
   `login`-gated and you're signed in to an account that isn't in the site's org.
-  Make it public (`sites access <slug> --mode public`) or sign in with an account
-  in that org.
+  Make it public (`ooda sites access <slug> --mode public`) or sign in with an
+  account in that org.
 - **Styles / fonts / images missing after publishing** → make sure those files
   are in the build output. The site is served at the root of its own subdomain,
   so absolute paths like `/assets/...` and `/_next/...` work.
