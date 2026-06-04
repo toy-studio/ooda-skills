@@ -121,16 +121,35 @@ ooda publish [--slug <slug>] [--json]
 - On success it prints the live URL, e.g. `https://my-app-p.ooda.run`.
 - `--json` gives machine-readable output: `{ ok, url, slug, version, fileCount, totalSize }`.
 
+### Naming the site (choose a good slug)
+The slug is the site's public name in the URL `{slug}-p.ooda.run`, so name it
+after **the user's project**, not the tool.
+
+- **Don't call it `ooda`** (or `site`, `dist`, `app`, etc.) — "ooda" is the CLI,
+  not their site. A generic or tool-named slug is almost never what they want.
+- Derive a descriptive slug from the **project**: its `package.json`/`ooda.json`
+  name, the repo name, or what the user calls it (e.g. `acme-marketing`,
+  `portfolio-2026`). Pass it with `--slug <name>`.
+- **If it's not obvious what the site should be called, ask the user** before
+  publishing — the slug is in the URL you'll share, and changing it later means a
+  new URL.
+- Confirm the URL back to the user after publishing so a wrong name is caught early.
+
 ### Slugs are global and auto-deduplicated
 `{slug}-p.ooda.run` is a global subdomain, so slugs are unique across all orgs.
 
 - Without `--slug`, the CLI derives one from `ooda.json`'s `name` or the folder
-  name. If that's already taken, it appends a short random suffix automatically.
+  name (it never uses "ooda" unless that's literally your project/folder name).
+  If that's already taken, it appends a short random suffix automatically.
 - It writes the resolved slug back to `ooda.json`, so **re-publishing the same
   project keeps the same URL**.
 - With `--slug <name>` you choose explicitly. An explicit slug is used as-is and
   is **not** auto-suffixed — if it's taken by another org you'll get an error and
   should pick a different one.
+- **It won't clobber a different site in your org.** If the slug already belongs
+  to another project in your org, a derived publish auto-suffixes and an explicit
+  `--slug` is **refused** — pass `--force` only if you really mean to overwrite
+  that site. (CLI 0.1.19+.)
 
 ### Is the project publishable?
 ooda serves a **static snapshot** (built HTML/CSS/JS) — there is no running
