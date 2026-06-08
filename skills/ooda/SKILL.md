@@ -23,23 +23,24 @@ Use this skill when the user wants to:
 - **Control access** to a site: public, password-protected, or ooda-login-only.
 - **Unpublish** a site.
 
-## What else ooda does (mostly interactive — outside this skill)
+## What else ooda does (outside this skill)
 
 ooda's other half is **cloud dev environments**: each project runs in its own
-cloud sandbox with Claude Code and a live URL. Those commands are **interactive**
-(they open the dashboard or spawn a TTY Claude session), so they're for the human
-to run, not for an agent to drive headlessly:
+cloud sandbox with Claude Code and a live URL.
 
-- `ooda` — interactive project menu + local dashboard.
+- `ooda` — interactive project menu + local dashboard (human-run).
 - `ooda deploy [path|github-url]` — spin up a cloud dev environment from a folder
-  or GitHub repo.
-- `ooda connect <project>` — open an existing project and run Claude in it.
-- `ooda list` — list the org's projects (this one *is* non-interactive; `--json`
-  works).
+  or GitHub repo. With a TTY it ends by dropping the human into a live Claude
+  session in the VM. **Without a TTY (agents/CI) it provisions the project,
+  prints how to connect, and exits 0** (CLI 0.1.23+) — so an agent *can* create a
+  project headlessly; it just won't open the interactive session.
+- `ooda connect <project>` — open an existing project and run Claude in it
+  (interactive; human-run).
+- `ooda list` — list the org's projects (non-interactive; `--json` works).
 
-This skill covers the **non-interactive** surface an agent can drive on its own:
+This skill covers the static-publish surface an agent can fully drive on its own:
 authentication, publishing static sites, and managing published sites. When a
-user wants a running dev environment (not a static publish), point them at
+user wants a running dev environment rather than a static publish, point them at
 `ooda deploy` / the dashboard rather than `ooda publish`.
 
 ## Install
