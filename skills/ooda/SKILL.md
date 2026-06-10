@@ -9,7 +9,9 @@ description: >
   `ooda` CLI, so an agent can drive the whole lifecycle. Triggers: "publish this
   site", "put this online", "deploy my built site", "share this as a URL", "list
   my ooda sites", "password-protect / make public / unpublish a site", "set an
-  env var / API key / secret for my site or project", "use window.__OODA_ENV__".
+  env var / API key / secret for my site or project", "use window.__OODA_ENV__",
+  "call an authenticated/OpenAI API from a published site", "proxy a secret API
+  key", "wire up the ooda.json secrets manifest".
 ---
 
 # ooda
@@ -170,7 +172,9 @@ can't be published as a static site.
 and public/anon keys can be set as env vars and read in the browser as
 `window.__OODA_ENV__.KEY` — no rebuild needed (see "Env vars & secrets" below).
 A site that only needs public config can be published; one that needs a real
-secret in the browser cannot (true secrets are never exposed to the page).
+secret in the browser cannot (true secrets are never exposed to the page) — but a
+site that needs to *call* a secret-authenticated API can, via the secret-injecting
+proxy (see "Env vars & secrets" below).
 
 ## Manage published sites
 
@@ -214,6 +218,8 @@ the CLI, non-interactively. There are two kinds:
 ooda secrets set API_URL=https://api.example.com --env --sites <slug>   # public config for a site
 ooda secrets set API_URL=https://api.example.com --env --all-sites      # …for every site in the org (admin)
 ooda secrets set STRIPE_KEY=sk_live_... --project <name>                # secret for a project VM
+ooda secrets set STRIPE_KEY=sk_live_... --project <name> \
+    --description "Stripe live secret key"                              # record a label (alias --desc)
 ooda secrets list [--site <slug> | --project <name>]                    # masked: keys only, never values
 ooda secrets attach KEY --sites a,b   /   ooda secrets detach KEY ...    # change which targets a pooled value applies to
 ooda secrets rm KEY [--site <slug> | --project <name>]
@@ -229,6 +235,66 @@ ooda secrets rm KEY [--site <slug> | --project <name>]
 - **Projects are sign-in only.** A project's preview URL (`{slug}.ooda.run`) now
   always requires the visitor to be a member of the project's ooda org — there's
   no public option. To share something openly, **publish a site** instead.
+- **`--description` (alias `--desc`)** records a human label for a value so
+  `ooda secrets list` shows what each key is for. It's metadata only — the value
+  itself is still never printed.
+
+### Call an authenticated API from a published site (secret-injecting proxy)
+
+A published site has no server, so it can't hold a true API key. ooda's backend can
+proxy for it: the browser calls a **same-origin** path and ooda injects the stored
+secret server-side — the key never reaches the browser. Drive it with two
+site-scoped secrets, where `<name>` uppercases to `<NAME>` (non-alphanumerics → `_`):
+
+```bash
+ooda secrets set PROXY_OPENAI_URL=https://api.openai.com --env --sites <slug>   # upstream base (public)
+ooda secrets set PROXY_OPENAI_KEY=sk-...                       --sites <slug>   # true secret
+```
+
+The site's JS then calls the proxy path (no key client-side):
+
+```js
+fetch("/__ooda/proxy/openai/v1/chat/completions", {
+  method: "POST",
+  body: JSON.stringify({ model, messages, stream: true }),
+})
+```
+
+It works for any Bearer-auth API (not just OpenAI) and supports streaming. The proxy
+inherits the site's access mode, so password/login-gate a public demo
+(`ooda sites access <slug> --mode password|login`) and use a spend-capped key.
+
+### Declared secrets (`ooda.json` `secrets` manifest)
+
+A repo can declare the values it needs in a `secrets` array in `ooda.json`, so an
+agent knows what to ask for. Each entry has a `key`, optional `kind` (`"env"` |
+`"secret"`, default `"secret"`), `scope` (`"site"` | `"project"`, default `"site"`),
+`description`, `example`, `default`, and `required` (default `true`):
+
+```json
+{
+  "secrets": [
+    { "key": "PROXY_OPENAI_URL", "kind": "env", "scope": "site",
+      "default": "https://api.openai.com", "description": "OpenAI upstream base" },
+    { "key": "PROXY_OPENAI_KEY", "kind": "secret", "scope": "site",
+      "description": "OpenAI API key", "example": "sk-..." }
+  ]
+}
+```
+
+To wire them up, run `ooda secrets check --json --apply-defaults` (publish first so a
+site slug exists). It auto-sets any entry with a `default` and returns the
+still-missing required keys, each with its `key`, `kind`, `scope`, `description`, and
+`example`. For each one, ask the user for the value (show its `description`/`example`),
+then set it:
+
+```bash
+ooda secrets set KEY=VALUE [--env] (--sites <slug> | --project <name>) --description "<desc>"
+```
+
+Add `--env` iff the entry's `kind` is `"env"`; use `--sites <slug>` for `scope:"site"`
+and `--project <name>` for `scope:"project"`; pass the entry's `description` through.
+Re-run `ooda secrets check` until it reports nothing missing.
 
 ## What to tell the user
 
