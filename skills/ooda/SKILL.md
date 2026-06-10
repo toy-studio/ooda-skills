@@ -4,11 +4,12 @@ description: >
   Publish and manage static websites on ooda.run from the command line. Use when
   the user wants to publish a built static site or SPA to a shareable
   {slug}-p.ooda.run URL, list/update/unpublish their published sites, or set
-  per-site access (public, password-protected, or ooda-login). Every command runs
-  non-interactively via the `ooda` CLI, so an agent can drive the whole
-  lifecycle. Triggers: "publish this site", "put this online", "deploy my built
-  site", "share this as a URL", "list my ooda sites", "password-protect / make
-  public / unpublish a site".
+  per-site access (public, password-protected, or ooda-login), or set env vars &
+  secrets for a site or project. Every command runs non-interactively via the
+  `ooda` CLI, so an agent can drive the whole lifecycle. Triggers: "publish this
+  site", "put this online", "deploy my built site", "share this as a URL", "list
+  my ooda sites", "password-protect / make public / unpublish a site", "set an
+  env var / API key / secret for my site or project", "use window.__OODA_ENV__".
 ---
 
 # ooda
@@ -21,6 +22,8 @@ Use this skill when the user wants to:
 - **Publish** a built static site / SPA to a public URL.
 - **List** the sites they've already published.
 - **Control access** to a site: public, password-protected, or ooda-login-only.
+- **Set env vars & secrets** for a site or project (non-secret config reaches the
+  page as `window.__OODA_ENV__`; true secrets never do).
 - **Unpublish** a site.
 
 ## What else ooda does (outside this skill)
@@ -159,9 +162,15 @@ server. This works for:
 - Client-side SPAs (React, Vue, Svelte with client-side routing)
 - Static exports (Next.js `output: "export"`, Nuxt `ssr: false`)
 
-It does **not** work for apps that need a server at runtime (SSR, `/api` routes,
-a database, runtime secrets). If the project needs a server, tell the user it
+It does **not** work for apps that need a **server** at runtime (SSR, `/api`
+routes, a runtime database). If the project needs a server, tell the user it
 can't be published as a static site.
+
+**Non-secret runtime config does work**, though: API base URLs, feature flags,
+and public/anon keys can be set as env vars and read in the browser as
+`window.__OODA_ENV__.KEY` — no rebuild needed (see "Env vars & secrets" below).
+A site that only needs public config can be published; one that needs a real
+secret in the browser cannot (true secrets are never exposed to the page).
 
 ## Manage published sites
 
@@ -187,6 +196,39 @@ ooda sites delete <slug> [--json]
 
 Every command exits `0` on success and non-zero on failure, printing the server's
 error message. Add `--json` to any command for structured output.
+
+## Env vars & secrets
+
+Give a site or project configuration without hardcoding it. Managed entirely from
+the CLI, non-interactively. There are two kinds:
+
+- **`--env` = non-secret config** (API base URL, feature flag, public/anon key).
+  For a published site it's delivered to the page as `window.__OODA_ENV__.KEY` —
+  read it there at runtime, **not** from `import.meta.env`/`process.env` (those
+  are build-time only on a static host). Changing a value re-materializes the
+  site with **no rebuild**. Safe to be public.
+- **secret** (the default, no `--env`) = a true secret. It is **never** sent to a
+  site's browser, and you can **never** read a value back from the CLI.
+
+```bash
+ooda secrets set API_URL=https://api.example.com --env --sites <slug>   # public config for a site
+ooda secrets set API_URL=https://api.example.com --env --all-sites      # …for every site in the org (admin)
+ooda secrets set STRIPE_KEY=sk_live_... --project <name>                # secret for a project VM
+ooda secrets list [--site <slug> | --project <name>]                    # masked: keys only, never values
+ooda secrets attach KEY --sites a,b   /   ooda secrets detach KEY ...    # change which targets a pooled value applies to
+ooda secrets rm KEY [--site <slug> | --project <name>]
+```
+
+- **Org pool vs per-target.** With `--all-sites`/`--all-projects` or
+  `--sites`/`--projects` an **org admin** adds a value to the org pool and
+  attaches it to targets. With a single `--site <slug>`/`--project <name>` the
+  target's owner (or an admin) sets a private value scoped to just that target.
+- **There is no `reveal` command — ever.** Values are write-only from the CLI
+  (the CLI is LLM-driven, so any printed value would leak). To **read** a value
+  back, an admin reveals it in the dashboard. Don't try to print or echo secrets.
+- **Projects are sign-in only.** A project's preview URL (`{slug}.ooda.run`) now
+  always requires the visitor to be a member of the project's ooda org — there's
+  no public option. To share something openly, **publish a site** instead.
 
 ## What to tell the user
 
