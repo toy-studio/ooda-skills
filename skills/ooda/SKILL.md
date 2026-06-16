@@ -111,7 +111,7 @@ tell the user:
 
 ```bash
 # Run from the PROJECT ROOT — not the build folder.
-ooda publish [--slug <slug>] [--json]
+ooda publish [--slug <slug>] [--title "<name>"] [--description "<text>"] [--tags <a,b,c>] [--message "<what changed>"] [--json]
 ```
 
 - Publishes an **already-built** static site — it does **not** run your build.
@@ -140,6 +140,21 @@ after **the user's project**, not the tool.
   publishing — the slug is in the URL you'll share, and changing it later means a
   new URL.
 - Confirm the URL back to the user after publishing so a wrong name is caught early.
+
+### Title, description & tags (set these!)
+The slug is just the URL. Each site also carries display/search metadata you
+should set on publish (CLI 0.1.25+):
+
+- **`--title "Human Name"`** — the display name shown in the dashboard instead
+  of the slug. Defaults to a prettified slug if unset, so always pass a real one.
+- **`--description "…"`** — what the site is: its purpose, key features, and
+  tech. Be specific and keyword-rich — this powers search across many sites.
+- **`--tags blog,astro,marketing`** — 3–6 short lowercase keywords (kind of
+  site, framework, domain).
+- Title/description/tags are saved to `ooda.json`, so re-publishing keeps them
+  without re-passing the flags.
+- **`--message "what changed"`** (or `-m`) — a per-publish note, recorded
+  against that version like a commit message. Use it on re-publishes.
 
 ### Slugs are global and auto-deduplicated
 `{slug}-p.ooda.run` is a global subdomain, so slugs are unique across all orgs.
