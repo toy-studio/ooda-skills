@@ -202,7 +202,10 @@ ooda sites delete <slug> [--json]
 ```
 
 - **`sites list`** — every site in the org, with its URL, effective access mode,
-  and owner. Use `--json` to parse it.
+  and owner. Use `--json` to parse it: the JSON entries also include each site's
+  `title`, `description`, and `tags`, so when you need to find the right site to
+  re-publish or update, list with `--json` and match on those rather than
+  guessing from the slug. (CLI 0.1.27+.)
 - **`sites access <slug>`** — set the access policy:
   - `--mode public` — anyone can view.
   - `--mode password --password <pw>` — visitors must enter the password.
