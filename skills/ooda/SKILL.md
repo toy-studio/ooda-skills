@@ -233,29 +233,36 @@ the CLI, non-interactively. There are two kinds:
   site's browser, and you can **never** read a value back from the CLI.
 
 ```bash
-ooda secrets set API_URL=https://api.example.com --env --sites <slug>   # public config for a site
-ooda secrets set API_URL=https://api.example.com --env --all-sites      # …for every site in the org (admin)
-ooda secrets set STRIPE_KEY=sk_live_... --project <name>                # secret for a project VM
+ooda secrets set API_URL=https://api.example.com --env            # global config (admin)
+ooda secrets set STRIPE_KEY=sk_live_... --site <slug>             # this site only (private)
 ooda secrets set STRIPE_KEY=sk_live_... --project <name> \
-    --description "Stripe live secret key"                              # record a label (alias --desc)
-ooda secrets list [--site <slug> | --project <name>]                    # masked: keys only, never values
-ooda secrets attach KEY --sites a,b   /   ooda secrets detach KEY ...    # change which targets a pooled value applies to
-ooda secrets rm KEY [--site <slug> | --project <name>]
+    --description "Stripe live secret key"                        # per-project private (+ label, alias --desc)
+ooda secrets list                                                # the global catalog: key, kind + description
+ooda secrets list --site <slug>                                  # masked: this target's keys (used global + private)
+ooda secrets use KEY --site <slug>                               # record that this site uses a global var
+ooda secrets rm KEY [--site <slug> | --project <name>] [--force] # global rm blocked while in use
 ```
 
-- **Org pool vs per-target.** With `--all-sites`/`--all-projects` or
-  `--sites`/`--projects` an **org admin** adds a value to the org pool and
-  attaches it to targets. With a single `--site <slug>`/`--project <name>` the
-  target's owner (or an admin) sets a private value scoped to just that target.
+- **Global vs per-target.** With no scope flag an **org admin** sets a *global*
+  var — a flat, org-wide namespace of shared config/secrets. A target only
+  **receives** a global once it's recorded as **using** it (`ooda secrets use`, or
+  the manifest via `secrets check`), so globals don't silently leak everywhere.
+  With `--site <slug>`/`--project <name>` the target's owner (or an admin) sets a
+  *private* value pinned to that one target, which overrides a global of the same
+  name.
+- **Reuse globals when going live.** Before publishing, run `ooda secrets list
+  --json` to see the global catalog (each var's `key`, `kind` + `description`,
+  never values), suggest the relevant ones to the user, and `ooda secrets use
+  <KEY> --site <slug>` to adopt them — don't re-create values that already exist.
 - **There is no `reveal` command — ever.** Values are write-only from the CLI
   (the CLI is LLM-driven, so any printed value would leak). To **read** a value
   back, an admin reveals it in the dashboard. Don't try to print or echo secrets.
 - **Projects are sign-in only.** A project's preview URL (`{slug}.ooda.run`) now
   always requires the visitor to be a member of the project's ooda org — there's
   no public option. To share something openly, **publish a site** instead.
-- **`--description` (alias `--desc`)** records a human label for a value so
-  `ooda secrets list` shows what each key is for. It's metadata only — the value
-  itself is still never printed.
+- **`--description` (alias `--desc`)** records a human label so `ooda secrets
+  list` shows what each key is for (and helps pick globals to reuse). Metadata
+  only — the value itself is still never printed.
 
 ### Call an authenticated API from a published site (secret-injecting proxy)
 
@@ -265,8 +272,8 @@ secret server-side — the key never reaches the browser. Drive it with two
 site-scoped secrets, where `<name>` uppercases to `<NAME>` (non-alphanumerics → `_`):
 
 ```bash
-ooda secrets set PROXY_OPENAI_URL=https://api.openai.com --env --sites <slug>   # upstream base (public)
-ooda secrets set PROXY_OPENAI_KEY=sk-...                       --sites <slug>   # true secret
+ooda secrets set PROXY_OPENAI_URL=https://api.openai.com --env --site <slug>   # upstream base (public)
+ooda secrets set PROXY_OPENAI_KEY=sk-...                       --site <slug>   # true secret
 ```
 
 The site's JS then calls the proxy path (no key client-side):
@@ -301,16 +308,18 @@ agent knows what to ask for. Each entry has a `key`, optional `kind` (`"env"` |
 ```
 
 To wire them up, run `ooda secrets check --json --apply-defaults` (publish first so a
-site slug exists). It auto-sets any entry with a `default` and returns the
-still-missing required keys, each with its `key`, `kind`, `scope`, `description`, and
-`example`. For each one, ask the user for the value (show its `description`/`example`),
-then set it:
+site slug exists). It records usage of any declared key already provided as a
+**global** var, applies any entry with a `default` (as a per-target private value),
+and returns the still-missing required keys, each with its `key`, `kind`, `scope`,
+`description`, and `example`. For each missing one, first check whether a global
+already covers it (`ooda secrets list --json`) and `ooda secrets use` it; otherwise
+ask the user for the value (show its `description`/`example`) and set it per-target:
 
 ```bash
-ooda secrets set KEY=VALUE [--env] (--sites <slug> | --project <name>) --description "<desc>"
+ooda secrets set KEY=VALUE [--env] (--site <slug> | --project <name>) --description "<desc>"
 ```
 
-Add `--env` iff the entry's `kind` is `"env"`; use `--sites <slug>` for `scope:"site"`
+Add `--env` iff the entry's `kind` is `"env"`; use `--site <slug>` for `scope:"site"`
 and `--project <name>` for `scope:"project"`; pass the entry's `description` through.
 Re-run `ooda secrets check` until it reports nothing missing.
 
