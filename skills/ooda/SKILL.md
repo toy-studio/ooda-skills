@@ -3,7 +3,7 @@ name: ooda
 description: >
   Publish and manage static websites on ooda.run from the command line. Use when
   the user wants to publish a built static site or SPA to a shareable
-  {slug}-p.ooda.run URL, list/update/unpublish their published sites, or set
+  {slug}.ooda.run URL, list/update/unpublish their published sites, or set
   per-site access (public, password-protected, or ooda-login), or set env vars &
   secrets for a site or project. Every command runs non-interactively via the
   `ooda` CLI, so an agent can drive the whole lifecycle. Triggers: "publish this
@@ -16,7 +16,7 @@ description: >
 
 # ooda
 
-ooda publishes static sites to a permanent, shareable URL at `{slug}-p.ooda.run`
+ooda publishes static sites to a permanent, shareable URL at `{slug}.ooda.run`
 and lets you manage them — all from the CLI, non-interactively.
 
 Use this skill when the user wants to:
@@ -124,11 +124,11 @@ ooda publish [--slug <slug>] [--title "<name>"] [--description "<text>"] [--tags
   - ✅ `ooda publish ./my-app` (path to a project root)
   - ❌ `ooda publish ./dist` — **wrong**: it looks for a build dir *inside*
     `./dist` and fails. Don't pass the build folder.
-- On success it prints the live URL, e.g. `https://my-app-p.ooda.run`.
+- On success it prints the live URL, e.g. `https://my-app.ooda.run`.
 - `--json` gives machine-readable output: `{ ok, url, slug, version, fileCount, totalSize }`.
 
 ### Naming the site (choose a good slug)
-The slug is the site's public name in the URL `{slug}-p.ooda.run`, so name it
+The slug is the site's public name in the URL `{slug}.ooda.run`, so name it
 after **the user's project**, not the tool.
 
 - **Don't call it `ooda`** (or `site`, `dist`, `app`, etc.) — "ooda" is the CLI,
@@ -157,7 +157,7 @@ should set on publish (CLI 0.1.25+):
   against that version like a commit message. Use it on re-publishes.
 
 ### Slugs are global and auto-deduplicated
-`{slug}-p.ooda.run` is a global subdomain, so slugs are unique across all orgs.
+`{slug}.ooda.run` is a global subdomain, so slugs are unique across all orgs.
 
 - Without `--slug`, the CLI derives one from `ooda.json`'s `name` or the folder
   name (it never uses "ooda" unless that's literally your project/folder name).
@@ -233,8 +233,9 @@ the CLI, non-interactively. There are two kinds:
   site's browser, and you can **never** read a value back from the CLI.
 
 ```bash
-ooda secrets set API_URL=https://api.example.com --env            # global config (admin)
-ooda secrets set STRIPE_KEY=sk_live_... --site <slug>             # this site only (private)
+# Always pass --description (alias --desc) when setting a variable.
+ooda secrets set API_URL=https://api.example.com --env --description "API base URL"   # global config (admin)
+ooda secrets set STRIPE_KEY=sk_live_... --site <slug> --description "Stripe live key" # this site only (private)
 ooda secrets set STRIPE_KEY=sk_live_... --project <name> \
     --description "Stripe live secret key"                        # per-project private (+ label, alias --desc)
 ooda secrets list                                                # the global catalog: key, kind + description
@@ -257,12 +258,14 @@ ooda secrets rm KEY [--site <slug> | --project <name>] [--force] # global rm blo
 - **There is no `reveal` command — ever.** Values are write-only from the CLI
   (the CLI is LLM-driven, so any printed value would leak). To **read** a value
   back, an admin reveals it in the dashboard. Don't try to print or echo secrets.
-- **Projects are sign-in only.** A project's preview URL (`{slug}.ooda.run`) now
+- **Projects are sign-in only.** A project's preview URL (`{slug}-dev.ooda.run`)
   always requires the visitor to be a member of the project's ooda org — there's
   no public option. To share something openly, **publish a site** instead.
-- **`--description` (alias `--desc`)** records a human label so `ooda secrets
-  list` shows what each key is for (and helps pick globals to reuse). Metadata
-  only — the value itself is still never printed.
+- **Always set `--description` (alias `--desc`) when adding a variable.** Pass a
+  short human label on every `ooda secrets set` so `ooda secrets list` shows what
+  each key is for and teammates/agents can pick the right global to reuse. It's
+  metadata only — the value itself is still never printed — but an undescribed
+  key is hard to identify later, so treat the description as required, not optional.
 
 ### Call an authenticated API from a published site (secret-injecting proxy)
 
@@ -325,7 +328,7 @@ Re-run `ooda secrets check` until it reports nothing missing.
 
 ## What to tell the user
 
-- After publishing, always share the live `https://<slug>-p.ooda.run` URL.
+- After publishing, always share the live `https://<slug>.ooda.run` URL.
 - **New sites may default to `login` access** (org members only). If the user
   wants it openly shareable, run `ooda sites access <slug> --mode public` and tell
   them it's now public. If you leave it login-gated, tell them only members of
