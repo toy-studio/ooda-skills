@@ -3,7 +3,7 @@ name: ooda
 description: >
   Publish and manage static websites on ooda.run from the command line. Use when
   the user wants to publish a built static site or SPA to a shareable
-  {slug}-p.ooda.run URL, list/update/unpublish their published sites, or set
+  {slug}.ooda.run URL, list/update/unpublish their published sites, or set
   per-site access (public, password-protected, or ooda-login). Every command runs
   non-interactively via the `ooda` CLI, so an agent can drive the whole
   lifecycle. Triggers: "publish this site", "put this online", "deploy my built
@@ -13,7 +13,7 @@ description: >
 
 # ooda
 
-ooda publishes static sites to a permanent, shareable URL at `{slug}-p.ooda.run`
+ooda publishes static sites to a permanent, shareable URL at `{slug}.ooda.run`
 and lets you manage them — all from the CLI, non-interactively.
 
 Use this skill when the user wants to:
@@ -118,7 +118,7 @@ ooda publish [--slug <slug>] [--json]
   - ✅ `ooda publish ./my-app` (path to a project root)
   - ❌ `ooda publish ./dist` — **wrong**: it looks for a build dir *inside*
     `./dist` and fails. Don't pass the build folder.
-- On success it prints the live URL, e.g. `https://my-app-p.ooda.run`.
+- On success it prints the live URL, e.g. `https://my-app.ooda.run`.
 - `--json` gives machine-readable output: `{ ok, url, slug, version, fileCount, totalSize, promoted, live }`.
 - Every publish appends a new **version** and makes it live. Pass **`--draft`**
   to append a version *without* making it live (it stays behind the current live
@@ -126,7 +126,7 @@ ooda publish [--slug <slug>] [--json]
   `ooda sites pin <slug> N` (see "Versions & rollback").
 
 ### Naming the site (choose a good slug)
-The slug is the site's public name in the URL `{slug}-p.ooda.run`, so name it
+The slug is the site's public name in the URL `{slug}.ooda.run`, so name it
 after **the user's project**, not the tool.
 
 - **Don't call it `ooda`** (or `site`, `dist`, `app`, etc.) — "ooda" is the CLI,
@@ -140,7 +140,9 @@ after **the user's project**, not the tool.
 - Confirm the URL back to the user after publishing so a wrong name is caught early.
 
 ### Slugs are global and auto-deduplicated
-`{slug}-p.ooda.run` is a global subdomain, so slugs are unique across all orgs.
+`{slug}.ooda.run` is a global subdomain, so slugs are unique across all orgs.
+(Sites published under the older `{slug}-p.ooda.run` scheme still work — those
+URLs 301-redirect to the bare `{slug}.ooda.run` — so old shared links don't break.)
 
 - Without `--slug`, the CLI derives one from `ooda.json`'s `name` or the folder
   name (it never uses "ooda" unless that's literally your project/folder name).
@@ -213,7 +215,7 @@ ooda sites pin <slug> latest             # re-pin the newest version (undo a rol
 
 ## What to tell the user
 
-- After publishing, always share the live `https://<slug>-p.ooda.run` URL.
+- After publishing, always share the live `https://<slug>.ooda.run` URL.
 - **New sites may default to `login` access** (org members only). If the user
   wants it openly shareable, run `ooda sites access <slug> --mode public` and tell
   them it's now public. If you leave it login-gated, tell them only members of
