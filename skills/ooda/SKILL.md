@@ -119,7 +119,11 @@ ooda publish [--slug <slug>] [--json]
   - ❌ `ooda publish ./dist` — **wrong**: it looks for a build dir *inside*
     `./dist` and fails. Don't pass the build folder.
 - On success it prints the live URL, e.g. `https://my-app-p.ooda.run`.
-- `--json` gives machine-readable output: `{ ok, url, slug, version, fileCount, totalSize }`.
+- `--json` gives machine-readable output: `{ ok, url, slug, version, fileCount, totalSize, promoted, live }`.
+- Every publish appends a new **version** and makes it live. Pass **`--draft`**
+  to append a version *without* making it live (it stays behind the current live
+  version); the CLI prints a `?v=N` preview URL, and you promote it later with
+  `ooda sites pin <slug> N` (see "Versions & rollback").
 
 ### Naming the site (choose a good slug)
 The slug is the site's public name in the URL `{slug}-p.ooda.run`, so name it
@@ -186,6 +190,26 @@ ooda sites delete <slug> [--json]
 
 Every command exits `0` on success and non-zero on failure, printing the server's
 error message. Add `--json` to any command for structured output.
+
+## Versions & rollback
+
+Every publish appends a version; the newest is normally live. You can roll back
+to any earlier version — it's a pointer move, nothing is re-uploaded.
+
+```bash
+ooda sites versions <slug> [--json]      # list versions; marks the live one (live/pinned)
+ooda sites pin <slug> <version>          # make an earlier version live ("pin" it)
+ooda sites pin <slug> latest             # re-pin the newest version (undo a rollback)
+```
+
+- **`sites versions <slug>`** — the publish history (newest first) with each
+  version's file count, size, and `--message` note; the live one is marked
+  `live` when it's the newest, `pinned` when an older version is being served.
+- **`sites pin <slug> <version|latest>`** — set which version is live. Pinning an
+  older version keeps it serving until you pin another **or publish new content**
+  — a normal publish appends past the newest version and goes live, superseding
+  the pin. Use `ooda publish --draft` to add a version without disturbing the
+  pinned/live one.
 
 ## What to tell the user
 
