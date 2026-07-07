@@ -157,6 +157,11 @@ should set on publish (CLI 0.1.25+):
   site, framework, domain).
 - Title/description/tags are saved to `ooda.json`, so re-publishing keeps them
   without re-passing the flags.
+- **Brand colour — set `"color": "#rrggbb"` in `ooda.json`** (CLI 0.1.29+):
+  the dominant accent/brand colour of the site's design. The dashboard tints
+  the site's card and preview frame with it. There's no flag — add the field
+  to `ooda.json` before publishing. Omit it only if the site has no
+  distinctive colour (the dashboard falls back to its default).
 - **`--message "what changed"`** (or `-m`) — a per-publish note, recorded
   against that version like a commit message. Use it on re-publishes.
 
