@@ -145,6 +145,19 @@ after **the user's project**, not the tool.
   new URL.
 - Confirm the URL back to the user after publishing so a wrong name is caught early.
 
+### Reserved & disallowed names
+The server enforces a naming policy on every publish:
+
+- **Reserved names.** Names that look like official ooda pages or
+  infrastructure (`login`, `privacy`, `terms`, `docs`, `www`, `api`, `drop`, …)
+  and anything starting with `ooda-` can't be claimed as a slug. A *derived*
+  slug that hits one is auto-suffixed and the publish succeeds (CLI 0.1.31+);
+  an explicit `--slug` fails with an error telling you to pick another name.
+- **Disallowed words.** Profanity and slurs are blocked in the slug **and** in
+  `--title`/`--description`/`--tags`. No suffix fixes these — the publish (or a
+  later metadata update) is refused with a message naming the offending field.
+  If a folder name trips this, pick a clean `--slug` instead of retrying.
+
 ### Title, description & tags (set these!)
 The slug is just the URL. Each site also carries display/search metadata you
 should set on publish (CLI 0.1.25+):
@@ -172,7 +185,8 @@ URLs 301-redirect to the bare `{slug}.ooda.run` — so old shared links don't br
 
 - Without `--slug`, the CLI derives one from `ooda.json`'s `name` or the folder
   name (it never uses "ooda" unless that's literally your project/folder name).
-  If that's already taken, it appends a short random suffix automatically.
+  If that's already taken — or is a reserved name (see above) — it appends a
+  short random suffix automatically.
 - It writes the resolved slug back to `ooda.json`, so **re-publishing the same
   project keeps the same URL**.
 - With `--slug <name>` you choose explicitly. An explicit slug is used as-is and
@@ -383,6 +397,12 @@ ooda --help
   publish` from the project root (not the build folder).
 - **"Slug … is taken by another organisation"** (only happens with an explicit
   `--slug`) → choose a different `--slug`, or omit it so the CLI picks a unique one.
+- **"… is reserved for ooda.run's own pages"** (explicit `--slug` only; a derived
+  slug auto-suffixes past it) → the name is kept for official ooda pages/infra.
+  Pick a different `--slug`; a variant like `<name>-app` works.
+- **"… contains a word that isn't allowed on ooda.run"** → the slug, title,
+  description, or tags tripped the banned-word filter. A suffix won't help —
+  choose a different name for the flagged field. Don't retry the same value.
 - **Visiting the URL loops or shows "you don't have access"** → the site is
   `login`-gated and you're signed in to an account that isn't in the site's org.
   Make it public (`ooda sites access <slug> --mode public`) or sign in with an
