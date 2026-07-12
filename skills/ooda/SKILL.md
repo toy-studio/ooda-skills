@@ -5,11 +5,11 @@ description: >
   the user wants to publish a built static site or SPA to a shareable
   {slug}.ooda.run URL, list/update/unpublish their published sites, or set
   per-site access (public, password-protected, or ooda-login), or set env vars &
-  secrets for a site or project. Every command runs non-interactively via the
+  secrets for a site. Every command runs non-interactively via the
   `ooda` CLI, so an agent can drive the whole lifecycle. Triggers: "publish this
   site", "put this online", "deploy my built site", "share this as a URL", "list
   my ooda sites", "password-protect / make public / unpublish a site", "set an
-  env var / API key / secret for my site or project", "use window.__OODA_ENV__",
+  env var / API key / secret for my site", "use window.__OODA_ENV__",
   "call an authenticated/OpenAI API from a published site", "proxy a secret API
   key", "wire up the ooda.json secrets manifest".
 ---
@@ -24,29 +24,9 @@ Use this skill when the user wants to:
 - **Publish** a built static site / SPA to a public URL.
 - **List** the sites they've already published.
 - **Control access** to a site: public, password-protected, or ooda-login-only.
-- **Set env vars & secrets** for a site or project (non-secret config reaches the
+- **Set env vars & secrets** for a site (non-secret config reaches the
   page as `window.__OODA_ENV__`; true secrets never do).
 - **Unpublish** a site.
-
-## What else ooda does (outside this skill)
-
-ooda's other half is **cloud dev environments**: each project runs in its own
-cloud sandbox with Claude Code and a live URL.
-
-- `ooda` — interactive project menu + local dashboard (human-run).
-- `ooda deploy [path|github-url]` — spin up a cloud dev environment from a folder
-  or GitHub repo. With a TTY it ends by dropping the human into a live Claude
-  session in the VM. **Without a TTY (agents/CI) it provisions the project,
-  prints how to connect, and exits 0** (CLI 0.1.23+) — so an agent *can* create a
-  project headlessly; it just won't open the interactive session.
-- `ooda connect <project>` — open an existing project and run Claude in it
-  (interactive; human-run).
-- `ooda list` — list the org's projects (non-interactive; `--json` works).
-
-This skill covers the static-publish surface an agent can fully drive on its own:
-authentication, publishing static sites, and managing published sites. When a
-user wants a running dev environment rather than a static publish, point them at
-`ooda deploy` / the dashboard rather than `ooda publish`.
 
 ## Install
 
@@ -145,6 +125,19 @@ after **the user's project**, not the tool.
   new URL.
 - Confirm the URL back to the user after publishing so a wrong name is caught early.
 
+### Reserved & disallowed names
+The server enforces a naming policy on every publish:
+
+- **Reserved names.** Names that look like official ooda pages or
+  infrastructure (`login`, `privacy`, `terms`, `docs`, `www`, `api`, `drop`, …)
+  and anything starting with `ooda-` can't be claimed as a slug. A *derived*
+  slug that hits one is auto-suffixed and the publish succeeds (CLI 0.1.31+);
+  an explicit `--slug` fails with an error telling you to pick another name.
+- **Disallowed words.** Profanity and slurs are blocked in the slug **and** in
+  `--title`/`--description`/`--tags`. No suffix fixes these — the publish (or a
+  later metadata update) is refused with a message naming the offending field.
+  If a folder name trips this, pick a clean `--slug` instead of retrying.
+
 ### Title, description & tags (set these!)
 The slug is just the URL. Each site also carries display/search metadata you
 should set on publish (CLI 0.1.25+):
@@ -172,7 +165,8 @@ URLs 301-redirect to the bare `{slug}.ooda.run` — so old shared links don't br
 
 - Without `--slug`, the CLI derives one from `ooda.json`'s `name` or the folder
   name (it never uses "ooda" unless that's literally your project/folder name).
-  If that's already taken, it appends a short random suffix automatically.
+  If that's already taken — or is a reserved name (see above) — it appends a
+  short random suffix automatically.
 - It writes the resolved slug back to `ooda.json`, so **re-publishing the same
   project keeps the same URL**.
 - With `--slug <name>` you choose explicitly. An explicit slug is used as-is and
@@ -252,7 +246,7 @@ ooda sites pin <slug> latest             # re-pin the newest version (undo a rol
 
 ## Env vars & secrets
 
-Give a site or project configuration without hardcoding it. Managed entirely from
+Give a site configuration without hardcoding it. Managed entirely from
 the CLI, non-interactively. There are two kinds:
 
 - **`--env` = non-secret config** (API base URL, feature flag, public/anon key).
@@ -267,21 +261,18 @@ the CLI, non-interactively. There are two kinds:
 # Always pass --description (alias --desc) when setting a variable.
 ooda secrets set API_URL=https://api.example.com --env --description "API base URL"   # global config (admin)
 ooda secrets set STRIPE_KEY=sk_live_... --site <slug> --description "Stripe live key" # this site only (private)
-ooda secrets set STRIPE_KEY=sk_live_... --project <name> \
-    --description "Stripe live secret key"                        # per-project private (+ label, alias --desc)
 ooda secrets list                                                # the global catalog: key, kind + description
-ooda secrets list --site <slug>                                  # masked: this target's keys (used global + private)
+ooda secrets list --site <slug>                                  # masked: this site's keys (used global + private)
 ooda secrets use KEY --site <slug>                               # record that this site uses a global var
-ooda secrets rm KEY [--site <slug> | --project <name>] [--force] # global rm blocked while in use
+ooda secrets rm KEY [--site <slug>] [--force]                    # global rm blocked while in use
 ```
 
-- **Global vs per-target.** With no scope flag an **org admin** sets a *global*
-  var — a flat, org-wide namespace of shared config/secrets. A target only
+- **Global vs per-site.** With no scope flag an **org admin** sets a *global*
+  var — a flat, org-wide namespace of shared config/secrets. A site only
   **receives** a global once it's recorded as **using** it (`ooda secrets use`, or
   the manifest via `secrets check`), so globals don't silently leak everywhere.
-  With `--site <slug>`/`--project <name>` the target's owner (or an admin) sets a
-  *private* value pinned to that one target, which overrides a global of the same
-  name.
+  With `--site <slug>` the site's owner (or an admin) sets a *private* value
+  pinned to that one site, which overrides a global of the same name.
 - **Reuse globals when going live.** Before publishing, run `ooda secrets list
   --json` to see the global catalog (each var's `key`, `kind` + `description`,
   never values), suggest the relevant ones to the user, and `ooda secrets use
@@ -289,9 +280,6 @@ ooda secrets rm KEY [--site <slug> | --project <name>] [--force] # global rm blo
 - **There is no `reveal` command — ever.** Values are write-only from the CLI
   (the CLI is LLM-driven, so any printed value would leak). To **read** a value
   back, an admin reveals it in the dashboard. Don't try to print or echo secrets.
-- **Projects are sign-in only.** A project's preview URL (`{slug}-dev.ooda.run`)
-  always requires the visitor to be a member of the project's ooda org — there's
-  no public option. To share something openly, **publish a site** instead.
 - **Always set `--description` (alias `--desc`) when adding a variable.** Pass a
   short human label on every `ooda secrets set` so `ooda secrets list` shows what
   each key is for and teammates/agents can pick the right global to reuse. It's
@@ -327,15 +315,15 @@ inherits the site's access mode, so password/login-gate a public demo
 
 A repo can declare the values it needs in a `secrets` array in `ooda.json`, so an
 agent knows what to ask for. Each entry has a `key`, optional `kind` (`"env"` |
-`"secret"`, default `"secret"`), `scope` (`"site"` | `"project"`, default `"site"`),
-`description`, `example`, `default`, and `required` (default `true`):
+`"secret"`, default `"secret"`), `description`, `example`, `default`, and
+`required` (default `true`):
 
 ```json
 {
   "secrets": [
-    { "key": "PROXY_OPENAI_URL", "kind": "env", "scope": "site",
+    { "key": "PROXY_OPENAI_URL", "kind": "env",
       "default": "https://api.openai.com", "description": "OpenAI upstream base" },
-    { "key": "PROXY_OPENAI_KEY", "kind": "secret", "scope": "site",
+    { "key": "PROXY_OPENAI_KEY", "kind": "secret",
       "description": "OpenAI API key", "example": "sk-..." }
   ]
 }
@@ -343,19 +331,18 @@ agent knows what to ask for. Each entry has a `key`, optional `kind` (`"env"` |
 
 To wire them up, run `ooda secrets check --json --apply-defaults` (publish first so a
 site slug exists). It records usage of any declared key already provided as a
-**global** var, applies any entry with a `default` (as a per-target private value),
-and returns the still-missing required keys, each with its `key`, `kind`, `scope`,
+**global** var, applies any entry with a `default` (as a per-site private value),
+and returns the still-missing required keys, each with its `key`, `kind`,
 `description`, and `example`. For each missing one, first check whether a global
 already covers it (`ooda secrets list --json`) and `ooda secrets use` it; otherwise
-ask the user for the value (show its `description`/`example`) and set it per-target:
+ask the user for the value (show its `description`/`example`) and set it per-site:
 
 ```bash
-ooda secrets set KEY=VALUE [--env] (--site <slug> | --project <name>) --description "<desc>"
+ooda secrets set KEY=VALUE [--env] --site <slug> --description "<desc>"
 ```
 
-Add `--env` iff the entry's `kind` is `"env"`; use `--site <slug>` for `scope:"site"`
-and `--project <name>` for `scope:"project"`; pass the entry's `description` through.
-Re-run `ooda secrets check` until it reports nothing missing.
+Add `--env` iff the entry's `kind` is `"env"`; pass the entry's `description`
+through. Re-run `ooda secrets check` until it reports nothing missing.
 
 ## What to tell the user
 
@@ -383,6 +370,12 @@ ooda --help
   publish` from the project root (not the build folder).
 - **"Slug … is taken by another organisation"** (only happens with an explicit
   `--slug`) → choose a different `--slug`, or omit it so the CLI picks a unique one.
+- **"… is reserved for ooda.run's own pages"** (explicit `--slug` only; a derived
+  slug auto-suffixes past it) → the name is kept for official ooda pages/infra.
+  Pick a different `--slug`; a variant like `<name>-app` works.
+- **"… contains a word that isn't allowed on ooda.run"** → the slug, title,
+  description, or tags tripped the banned-word filter. A suffix won't help —
+  choose a different name for the flagged field. Don't retry the same value.
 - **Visiting the URL loops or shows "you don't have access"** → the site is
   `login`-gated and you're signed in to an account that isn't in the site's org.
   Make it public (`ooda sites access <slug> --mode public`) or sign in with an
