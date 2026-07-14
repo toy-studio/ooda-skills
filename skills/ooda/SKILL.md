@@ -104,7 +104,8 @@ ooda publish [--slug <slug>] [--title "<name>"] [--description "<text>"] [--tags
   - ✅ `ooda publish ./my-app` (path to a project root)
   - ❌ `ooda publish ./dist` — **wrong**: it looks for a build dir *inside*
     `./dist` and fails. Don't pass the build folder.
-- On success it prints the live URL, e.g. `https://my-app.ooda.run`.
+- On success it prints the live URL, e.g. `https://my-app-k3x9.ooda.run` —
+  note the short random suffix; every new site gets one (see "Naming the site").
 - `--json` gives machine-readable output: `{ ok, url, slug, version, fileCount, totalSize, promoted, live }`.
 - Every publish appends a new **version** and makes it live. Pass **`--draft`**
   to append a version *without* making it live (it stays behind the current live
@@ -115,6 +116,12 @@ ooda publish [--slug <slug>] [--title "<name>"] [--description "<text>"] [--tags
 The slug is the site's public name in the URL `{slug}.ooda.run`, so name it
 after **the user's project**, not the tool.
 
+- **Every NEW site's URL ends in a short random suffix** — 4 characters
+  including a digit, e.g. `acme-marketing-k3x9.ooda.run`. The server requires
+  it (clean bare names are kept for a future org-subdomain scheme), and the
+  CLI appends it automatically — even to an explicit `--slug` (CLI 0.1.32+).
+  Don't try to fight or strip it; just pick a good descriptive **base** name.
+  Existing sites keep the exact URL they already have.
 - **Don't call it `ooda`** (or `site`, `dist`, `app`, etc.) — "ooda" is the CLI,
   not their site. A generic or tool-named slug is almost never what they want.
 - Derive a descriptive slug from the **project**: its `package.json`/`ooda.json`
@@ -123,11 +130,18 @@ after **the user's project**, not the tool.
 - **If it's not obvious what the site should be called, ask the user** before
   publishing — the slug is in the URL you'll share, and changing it later means a
   new URL.
-- Confirm the URL back to the user after publishing so a wrong name is caught early.
+- Confirm the URL back to the user after publishing so a wrong name is caught
+  early — share the **exact URL the CLI printed**, which includes the suffix.
 
 ### Reserved & disallowed names
 The server enforces a naming policy on every publish:
 
+- **Random suffix (every new site).** A NEW site's slug must end in a random
+  suffix (4 trailing characters including a digit). The CLI handles this
+  automatically (0.1.32+) whatever the slug's origin, so you normally never
+  see the underlying `suffix_required` rejection — older CLIs surface it as an
+  error on an explicit `--slug` (update the CLI). Republishing an existing
+  site is unaffected, whatever its slug looks like.
 - **Reserved names.** Names that look like official ooda pages or
   infrastructure (`login`, `privacy`, `terms`, `docs`, `www`, `api`, `drop`, …)
   and anything starting with `ooda-` can't be claimed as a slug. A *derived*
@@ -163,15 +177,16 @@ should set on publish (CLI 0.1.25+):
 (Sites published under the older `{slug}-p.ooda.run` scheme still work — those
 URLs 301-redirect to the bare `{slug}.ooda.run` — so old shared links don't break.)
 
-- Without `--slug`, the CLI derives one from `ooda.json`'s `name` or the folder
-  name (it never uses "ooda" unless that's literally your project/folder name).
-  If that's already taken — or is a reserved name (see above) — it appends a
-  short random suffix automatically.
+- Without `--slug`, the CLI derives a base name from `ooda.json`'s `name` or the
+  folder name (it never uses "ooda" unless that's literally your project/folder
+  name) and appends the required random suffix for a new site. A collision or
+  reserved name (see above) just rolls a fresh suffix.
 - It writes the resolved slug back to `ooda.json`, so **re-publishing the same
-  project keeps the same URL**.
-- With `--slug <name>` you choose explicitly. An explicit slug is used as-is and
-  is **not** auto-suffixed — if it's taken by another org you'll get an error and
-  should pick a different one.
+  project keeps the same URL** — suffix included.
+- With `--slug <name>` you choose the base explicitly. A new site still gains
+  the random suffix (CLI 0.1.32+); beyond that the name is used as-is — if the
+  result is taken by another org you'll get an error and should pick a
+  different base.
 - **It won't clobber a different site in your org.** If the slug already belongs
   to another project in your org, a derived publish auto-suffixes and an explicit
   `--slug` is **refused** — pass `--force` only if you really mean to overwrite
@@ -368,6 +383,10 @@ ooda --help
   user run `ooda` and log in once, or set `OODA_ACCESS_TOKEN` + `OODA_ORG_ID`.
 - **"No build output found"** → run the project's build first, and run `ooda
   publish` from the project root (not the build folder).
+- **"New site URLs get a random suffix" / `suffix_required`** → you're on an
+  older CLI (< 0.1.32) publishing a new site with an explicit `--slug`. Update
+  the CLI (`npm install -g @oodarun/cli`) — newer versions append the required
+  suffix automatically.
 - **"Slug … is taken by another organisation"** (only happens with an explicit
   `--slug`) → choose a different `--slug`, or omit it so the CLI picks a unique one.
 - **"… is reserved for ooda.run's own pages"** (explicit `--slug` only; a derived
