@@ -42,9 +42,8 @@ Requirements: Node.js 20+, and an ooda account in an organization (publishing is
 org-scoped).
 
 > You can also run without installing via `npx @oodarun/cli@latest <command>`,
-> but prefer the global `ooda` form: it's shorter, and it sidesteps
-> command-rewriting proxies/hooks that mangle `npx` (e.g. rewriting it to
-> `npm run`). All examples below use `ooda`.
+> but prefer the global `ooda` command — it is shorter and more reliable
+> across shells. All examples below use `ooda`.
 
 To (re)install this skill: `npx skills add toy-studio/ooda-skills -g` (see the
 repo README).
@@ -52,29 +51,6 @@ repo README).
 ## Authentication (do this first)
 
 ooda commands need an org session — an **existing** account (signup is invite-only).
-Pick whichever fits:
-
-1. **Email-code login — agent-drivable** (recommended; CLI 0.1.15+).
-   You can run the whole login from chat — no password, no terminal prompt:
-   ```bash
-   ooda login --email <their-email>            # emails a 6-digit code
-   # ask the user for the code from their inbox, then:
-   ooda login --email <their-email> --code <code> [--org <id>] [--json]
-   ```
-   **Ask the user which email their ooda account uses — do NOT guess it** (e.g.
-   from git config or the repo). A wrong address silently sends nothing (the
-   endpoint never reveals whether an account exists), so a guess just wastes a
-   round-trip. If they've logged in before, `ooda whoami` prints the account email.
-   On success a session is saved to `~/.ooda/auth.json` and reused by every later
-   command. If the account is in several orgs, pass `--org <id>` (the error lists
-   the options).
-
-2. **Saved login (any version).** The user runs `ooda` (or `ooda login`) once and
-   signs in interactively; the saved session is reused afterwards.
-
-3. **Environment variables (headless / CI).** Set both and the CLI skips login:
-   - `OODA_ACCESS_TOKEN` — the user's JWT.
-   - `OODA_ORG_ID` — the org to act in.
 
 **Before publishing, check the session — don't just try a command** (an unauthed
 command may trigger an interactive prompt you can't answer):
@@ -83,9 +59,37 @@ command may trigger an interactive prompt you can't answer):
 ooda whoami   # exits 0 + prints the org when signed in, non-zero otherwise
 ```
 
-If it exits non-zero, authenticate with one of the options above. If you can't,
-tell the user:
-> "Run `ooda` and log in once, then I can publish for you."
+If it exits non-zero, authenticate with one of these paths, in order of
+preference:
+
+1. **The user logs in themselves (preferred).** Ask the user to run `ooda login`
+   in their own terminal and sign in once. The session is saved to
+   `~/.ooda/auth.json` and reused by every later command. Tell them:
+   > "Run `ooda login` once, then I can publish for you."
+
+2. **Environment variables (headless / CI).** Set both and the CLI skips login:
+   - `OODA_ACCESS_TOKEN` — the user's JWT.
+   - `OODA_ORG_ID` — the org to act in.
+
+3. **Email-code login from chat (fallback; CLI 0.1.15+).** Use this only when
+   the user can't run a terminal themselves. The user stays in control of the
+   credential at every step:
+   ```bash
+   ooda login --email <their-email>            # emails a 6-digit code
+   # the USER reads the code from their own inbox and types it into the chat:
+   ooda login --email <their-email> --code <code> [--org <id>] [--json]
+   ```
+   Rules for this path:
+   - **Ask the user which email their ooda account uses — do NOT guess it** (e.g.
+     from git config or the repo). A wrong address silently sends nothing (the
+     endpoint never reveals whether an account exists), so a guess just wastes a
+     round-trip. If they've logged in before, `ooda whoami` prints the account email.
+   - **Never open or search the user's mailbox for the code**, even if you have
+     email tools. The user reads the email and relays the code themselves.
+   - The code is single-use and expires after 10 minutes. Requesting a new code
+     cancels any earlier one — use the latest email.
+   - If the account is in several orgs, pass `--org <id>` (the error lists the
+     options).
 
 ## Publish a site
 
@@ -275,7 +279,7 @@ the CLI, non-interactively. There are two kinds:
 ```bash
 # Always pass --description (alias --desc) when setting a variable.
 ooda secrets set API_URL=https://api.example.com --env --description "API base URL"   # global config (admin)
-ooda secrets set STRIPE_KEY=sk_live_... --site <slug> --description "Stripe live key" # this site only (private)
+ooda secrets set STRIPE_KEY="$STRIPE_KEY" --site <slug> --description "Stripe live key" # this site only (private; shell-expanded — see below)
 ooda secrets list                                                # the global catalog: key, kind + description
 ooda secrets list --site <slug>                                  # masked: this site's keys (used global + private)
 ooda secrets use KEY --site <slug>                               # record that this site uses a global var
@@ -295,6 +299,18 @@ ooda secrets rm KEY [--site <slug>] [--force]                    # global rm blo
 - **There is no `reveal` command — ever.** Values are write-only from the CLI
   (the CLI is LLM-driven, so any printed value would leak). To **read** a value
   back, an admin reveals it in the dashboard. Don't try to print or echo secrets.
+- **Keep true secret values out of the chat.** Do not ask the user to paste a
+  secret (API key, token) into the conversation, and do not type one into a
+  command yourself. Use one of these flows instead:
+  1. The user runs the `ooda secrets set` command themselves in their terminal.
+  2. The user exports the value as a shell variable (e.g. in their shell or a
+     gitignored `.env` they source), and you run the command with **shell
+     expansion**, so the value never enters the model's context or transcript:
+     ```bash
+     ooda secrets set STRIPE_KEY="$STRIPE_KEY" --site <slug> --desc "Stripe live key"
+     ```
+  Non-secret `--env` config (URLs, flags, public/anon keys) is fine to pass
+  inline — it's public by design.
 - **Always set `--description` (alias `--desc`) when adding a variable.** Pass a
   short human label on every `ooda secrets set` so `ooda secrets list` shows what
   each key is for and teammates/agents can pick the right global to reuse. It's
@@ -309,8 +325,9 @@ secret server-side — the key never reaches the browser. Drive it with two
 site-scoped secrets, where `<name>` uppercases to `<NAME>` (non-alphanumerics → `_`):
 
 ```bash
-ooda secrets set PROXY_OPENAI_URL=https://api.openai.com --env --site <slug>   # upstream base (public)
-ooda secrets set PROXY_OPENAI_KEY=sk-...                       --site <slug>   # true secret
+ooda secrets set PROXY_OPENAI_URL=https://api.openai.com --env --site <slug>  # upstream base (public)
+ooda secrets set PROXY_OPENAI_KEY="$OPENAI_API_KEY"            --site <slug>  # true secret — shell-expanded,
+                                                                              # never pasted into chat
 ```
 
 The site's JS then calls the proxy path (no key client-side):
@@ -349,15 +366,19 @@ site slug exists). It records usage of any declared key already provided as a
 **global** var, applies any entry with a `default` (as a per-site private value),
 and returns the still-missing required keys, each with its `key`, `kind`,
 `description`, and `example`. For each missing one, first check whether a global
-already covers it (`ooda secrets list --json`) and `ooda secrets use` it; otherwise
-ask the user for the value (show its `description`/`example`) and set it per-site:
+already covers it (`ooda secrets list --json`) and `ooda secrets use` it.
+Otherwise set it per-site — for an `"env"` entry, ask the user for the value
+(show its `description`/`example`) and pass it inline with `--env`; for a
+`"secret"` entry, use the transcript-safe flow above (the user runs the command
+themselves, or exports a shell variable you expand):
 
 ```bash
-ooda secrets set KEY=VALUE [--env] --site <slug> --description "<desc>"
+ooda secrets set KEY=VALUE --env --site <slug> --description "<desc>"   # kind: env
+ooda secrets set KEY="$KEY" --site <slug> --description "<desc>"        # kind: secret
 ```
 
-Add `--env` iff the entry's `kind` is `"env"`; pass the entry's `description`
-through. Re-run `ooda secrets check` until it reports nothing missing.
+Pass the entry's `description` through. Re-run `ooda secrets check` until it
+reports nothing missing.
 
 ## What to tell the user
 
@@ -368,6 +389,25 @@ through. Re-run `ooda secrets check` until it reports nothing missing.
   their ooda org can open it.
 - For a **password**-protected site, share both the URL and the password.
 
+## Security & data access
+
+This skill is documentation only — it ships no code. It teaches the agent to
+drive the published [`@oodarun/cli`](https://www.npmjs.com/package/@oodarun/cli).
+What that CLI touches:
+
+- **Reads** the project directory: the build output and `ooda.json`.
+- **Writes** `ooda.json` (slug + metadata) and the session file
+  `~/.ooda/auth.json` (mode 0600).
+- **Network**: HTTPS to `api.ooda.run` only.
+- **Secrets are write-only.** The CLI can set a secret but can never read one
+  back — there is no reveal command, so a value can't leak into a chat
+  transcript. Admins reveal values in the dashboard instead.
+- **The agent never handles passwords** and must never read the user's mailbox.
+  See the authentication section above.
+
+Full disclosures:
+[SECURITY.md](https://github.com/toy-studio/ooda-skills/blob/main/SECURITY.md).
+
 ## Full reference
 
 ```bash
@@ -376,9 +416,8 @@ ooda --help
 
 ## Troubleshooting
 
-- **`npx` gets rewritten / "turned into npm run"** → a command-rewriting proxy or
-  hook is mangling `npx`. Install globally (`npm install -g @oodarun/cli`) and use
-  the `ooda` command, which isn't affected.
+- **`npx @oodarun/cli` fails or behaves unexpectedly in your shell** → install
+  the CLI globally (`npm install -g @oodarun/cli`) and use the `ooda` command.
 - **It tries to prompt for a login** → no saved session and no env vars. Have the
   user run `ooda` and log in once, or set `OODA_ACCESS_TOKEN` + `OODA_ORG_ID`.
 - **"No build output found"** → run the project's build first, and run `ooda
