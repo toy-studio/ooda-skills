@@ -134,9 +134,8 @@ after **the user's project**, not the tool.
   the tool, not the user's site, and `ooda-react-blog` is the starter's name —
   if you clone a template, publish under a slug describing *their* project, not
   the template. (An `ooda-…` slug is allowed and will publish; it's just rarely
-  what the user wants. The exception is account-page lookalikes — `ooda-login`,
-  `ooda-support`, `ooda-billing` — which are refused outright.) Avoid generic
-  tool names (`site`, `dist`, `app`) for the same reason.
+  what the user wants.) Avoid generic tool names (`site`, `dist`, `app`) for the
+  same reason.
 - Derive a descriptive slug from the **project**: its `package.json`/`ooda.json`
   name, the repo name, or what the user calls it (e.g. `acme-marketing`,
   `portfolio-2026`). Pass it with `--slug <name>`.
@@ -162,14 +161,11 @@ with a different one.
   infrastructure (`login`, `privacy`, `terms`, `docs`, `www`, `api`, `drop`, …)
   can't be claimed as-is. The suffix every new site gets already clears them
   (`privacy-k3x9` is fine), so the publish just succeeds.
-- **ooda account-page lookalikes.** `ooda` itself, and `ooda-` + an
-  account/support word (`ooda-login`, `ooda-support`, `ooda-billing`,
-  `ooda-verify`), are refused however they end — a suffix doesn't help, because
-  `ooda-login-k3x9` still reads like an ooda page. The server returns a name
-  its policy *does* accept and the CLI publishes to that (CLI 0.1.35+),
-  reporting it as `requestedSlug` → `slug` in `--json`. **Other `ooda-` names
-  are fine** — `ooda-react-blog-k3x9` publishes normally — so a template's own
-  name is never a blocker.
+- **The `ooda-` prefix is not reserved.** `ooda-react-blog-k3x9` and friends
+  publish normally, so a template's own name is never a blocker. The random
+  suffix every new site carries is what separates a user site from ooda's own
+  pages. (Bare `ooda` is a reserved name like the ones above — it publishes as
+  `ooda-k3x9`.)
 - **Disallowed words.** Profanity and slurs are blocked in the slug **and** in
   `--title`/`--description`/`--tags`. No suffix or rename by the CLI fixes
   these — the publish (or a later metadata update) is refused with a message
@@ -454,14 +450,13 @@ ooda --help
   own pages"** → shouldn't happen on CLI 0.1.35+, which suffixes past both and
   publishes. If you see it, update the CLI (`npm install -g @oodarun/cli`); as a
   one-off, publishing with any `--slug` variant (`<name>-app`) also works.
-- **"ooda.run rejected 5 slugs …" / "… reads as one of ooda's own pages"**
-  (older CLIs: "Couldn't find a free slug after 5 attempts") → nothing is
-  "taken" here: the naming policy is global and refuses ooda account-page
-  lookalikes (`ooda-login`, `ooda-support`) outright, and no suffix rescues
-  one. CLI 0.1.35+ takes the server's suggested name automatically; on an older
-  CLI, pass a `--slug` that isn't ooda-account-shaped. Plain `ooda-` names
-  (e.g. a template folder like `ooda-react-blog`) are fine — older CLIs used to
-  fail on those too, which is fixed server-side.
+- **"ooda.run rejected 5 slugs …"** (older CLIs: "Couldn't find a free slug
+  after 5 attempts") → the CLI tried five suffixed names and every one was
+  rejected. On CLI 0.1.35+ this is rare and means bad luck on collisions, not a
+  policy you can't satisfy: read the reason the message quotes, then publish
+  with a different `--slug` base. On an older CLI it usually means the base name
+  itself hits a rule the CLI can't suffix past — `ooda-` template names
+  (`ooda-react-blog`) used to fail this way, which is fixed server-side.
 - **"… contains a word that isn't allowed on ooda.run"** → the slug, title,
   description, or tags tripped the banned-word filter. A suffix won't help —
   choose a different name for the flagged field. Don't retry the same value.
