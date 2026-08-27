@@ -110,7 +110,11 @@ ooda publish [--slug <slug>] [--title "<name>"] [--description "<text>"] [--tags
     `./dist` and fails. Don't pass the build folder.
 - On success it prints the live URL, e.g. `https://my-app-k3x9.ooda.run` —
   note the short random suffix; every new site gets one (see "Naming the site").
-- `--json` gives machine-readable output: `{ ok, url, slug, version, fileCount, totalSize, promoted, live }`.
+- `--json` gives machine-readable output: `{ ok, url, slug, version, fileCount,
+  totalSize, promoted, live }`, plus `requestedSlug` when the name you asked for
+  wasn't available and the CLI published to a different one (CLI 0.1.35+).
+  **Always read the slug/URL back from the output rather than assuming the one
+  you passed** — see "Naming the site".
 - Every publish appends a new **version** and makes it live. Pass **`--draft`**
   to append a version *without* making it live (it stays behind the current live
   version); the CLI prints a `?v=N` preview URL, and you promote it later with
@@ -126,8 +130,12 @@ after **the user's project**, not the tool.
   CLI appends it automatically — even to an explicit `--slug` (CLI 0.1.32+).
   Don't try to fight or strip it; just pick a good descriptive **base** name.
   Existing sites keep the exact URL they already have.
-- **Don't call it `ooda`** (or `site`, `dist`, `app`, etc.) — "ooda" is the CLI,
-  not their site. A generic or tool-named slug is almost never what they want.
+- **Don't name the site after ooda or the template it came from.** "ooda" is
+  the tool, not the user's site, and `ooda-react-blog` is the starter's name —
+  if you clone a template, publish under a slug describing *their* project, not
+  the template. (An `ooda-…` slug is allowed and will publish; it's just rarely
+  what the user wants.) Avoid generic tool names (`site`, `dist`, `app`) for the
+  same reason.
 - Derive a descriptive slug from the **project**: its `package.json`/`ooda.json`
   name, the repo name, or what the user calls it (e.g. `acme-marketing`,
   `portfolio-2026`). Pass it with `--slug <name>`.
@@ -138,7 +146,10 @@ after **the user's project**, not the tool.
   early — share the **exact URL the CLI printed**, which includes the suffix.
 
 ### Reserved & disallowed names
-The server enforces a naming policy on every publish:
+The server enforces a naming policy on every publish. **An unavailable name
+does not fail the publish** (CLI 0.1.35+): the CLI resolves it and prints where
+the site actually landed, so you never need to hunt for a free slug or retry
+with a different one.
 
 - **Random suffix (every new site).** A NEW site's slug must end in a random
   suffix (4 trailing characters including a digit). The CLI handles this
@@ -148,13 +159,18 @@ The server enforces a naming policy on every publish:
   site is unaffected, whatever its slug looks like.
 - **Reserved names.** Names that look like official ooda pages or
   infrastructure (`login`, `privacy`, `terms`, `docs`, `www`, `api`, `drop`, …)
-  and anything starting with `ooda-` can't be claimed as a slug. A *derived*
-  slug that hits one is auto-suffixed and the publish succeeds (CLI 0.1.31+);
-  an explicit `--slug` fails with an error telling you to pick another name.
+  can't be claimed as-is. The suffix every new site gets already clears them
+  (`privacy-k3x9` is fine), so the publish just succeeds.
+- **The `ooda-` prefix is not reserved.** `ooda-react-blog-k3x9` and friends
+  publish normally, so a template's own name is never a blocker. The random
+  suffix every new site carries is what separates a user site from ooda's own
+  pages. (Bare `ooda` is a reserved name like the ones above — it publishes as
+  `ooda-k3x9`.)
 - **Disallowed words.** Profanity and slurs are blocked in the slug **and** in
-  `--title`/`--description`/`--tags`. No suffix fixes these — the publish (or a
-  later metadata update) is refused with a message naming the offending field.
-  If a folder name trips this, pick a clean `--slug` instead of retrying.
+  `--title`/`--description`/`--tags`. No suffix or rename by the CLI fixes
+  these — the publish (or a later metadata update) is refused with a message
+  naming the offending field. If a folder name trips this, pick a clean
+  `--slug` instead of retrying.
 
 ### Title, description & tags (set these!)
 The slug is just the URL. Each site also carries display/search metadata you
@@ -183,18 +199,22 @@ URLs 301-redirect to the bare `{slug}.ooda.run` — so old shared links don't br
 
 - Without `--slug`, the CLI derives a base name from `ooda.json`'s `name` or the
   folder name (it never uses "ooda" unless that's literally your project/folder
-  name) and appends the required random suffix for a new site. A collision or
-  reserved name (see above) just rolls a fresh suffix.
+  name) and appends the required random suffix for a new site.
 - It writes the resolved slug back to `ooda.json`, so **re-publishing the same
   project keeps the same URL** — suffix included.
 - With `--slug <name>` you choose the base explicitly. A new site still gains
-  the random suffix (CLI 0.1.32+); beyond that the name is used as-is — if the
-  result is taken by another org you'll get an error and should pick a
-  different base.
+  the random suffix (CLI 0.1.32+).
+- **A taken or reserved name never fails the publish** (CLI 0.1.35+). Whatever
+  the slug's origin — derived, `--slug`, or the one saved in `ooda.json` — the
+  CLI rolls a fresh suffix (or takes the alternative the server suggests) and
+  publishes there. **Don't try to pick a free slug yourself, and don't retry a
+  publish with a different name because one was unavailable** — read the slug
+  and URL the CLI printed instead.
 - **It won't clobber a different site in your org.** If the slug already belongs
-  to another project in your org, a derived publish auto-suffixes and an explicit
-  `--slug` is **refused** — pass `--force` only if you really mean to overwrite
-  that site. (CLI 0.1.19+.)
+  to another project in your org, the publish goes to a new suffixed slug rather
+  than overwriting it, and says so. Pass `--force` only if you really mean to
+  replace that site's contents. (CLI 0.1.19+; before 0.1.35 an explicit `--slug`
+  was refused here instead.)
 
 ### Is the project publishable?
 ooda serves a **static snapshot** (built HTML/CSS/JS) — there is no running
@@ -426,11 +446,17 @@ ooda --help
   older CLI (< 0.1.32) publishing a new site with an explicit `--slug`. Update
   the CLI (`npm install -g @oodarun/cli`) — newer versions append the required
   suffix automatically.
-- **"Slug … is taken by another organisation"** (only happens with an explicit
-  `--slug`) → choose a different `--slug`, or omit it so the CLI picks a unique one.
-- **"… is reserved for ooda.run's own pages"** (explicit `--slug` only; a derived
-  slug auto-suffixes past it) → the name is kept for official ooda pages/infra.
-  Pick a different `--slug`; a variant like `<name>-app` works.
+- **"Slug … is taken by another organisation" / "… is reserved for ooda.run's
+  own pages"** → shouldn't happen on CLI 0.1.35+, which suffixes past both and
+  publishes. If you see it, update the CLI (`npm install -g @oodarun/cli`); as a
+  one-off, publishing with any `--slug` variant (`<name>-app`) also works.
+- **"ooda.run rejected 5 slugs …"** (older CLIs: "Couldn't find a free slug
+  after 5 attempts") → the CLI tried five suffixed names and every one was
+  rejected. On CLI 0.1.35+ this is rare and means bad luck on collisions, not a
+  policy you can't satisfy: read the reason the message quotes, then publish
+  with a different `--slug` base. On an older CLI it usually means the base name
+  itself hits a rule the CLI can't suffix past — `ooda-` template names
+  (`ooda-react-blog`) used to fail this way, which is fixed server-side.
 - **"… contains a word that isn't allowed on ooda.run"** → the slug, title,
   description, or tags tripped the banned-word filter. A suffix won't help —
   choose a different name for the flagged field. Don't retry the same value.
