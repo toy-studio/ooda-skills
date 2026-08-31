@@ -17,7 +17,8 @@ description: >
 # ooda
 
 ooda publishes static sites to a permanent, shareable URL at `{slug}.ooda.run`
-and lets you manage them — all from the CLI, non-interactively.
+and lets you manage them — all from the CLI, non-interactively. A site in a paid
+org also gets a short `{site}.{org}.ooda.run` address (see "Two addresses").
 
 Use this skill when the user wants to:
 
@@ -112,7 +113,8 @@ ooda publish [--slug <slug>] [--title "<name>"] [--description "<text>"] [--tags
   note the short random suffix; every new site gets one (see "Naming the site").
 - `--json` gives machine-readable output: `{ ok, url, slug, version, fileCount,
   totalSize, promoted, live }`, plus `requestedSlug` when the name you asked for
-  wasn't available and the CLI published to a different one (CLI 0.1.35+).
+  wasn't available and the CLI published to a different one (CLI 0.1.35+), plus
+  `prettyUrl` when the org has a short address (CLI 0.1.37+ — see "Two addresses").
   **Always read the slug/URL back from the output rather than assuming the one
   you passed** — see "Naming the site".
 - Every publish appends a new **version** and makes it live. Pass **`--draft`**
@@ -215,6 +217,43 @@ URLs 301-redirect to the bare `{slug}.ooda.run` — so old shared links don't br
   than overwriting it, and says so. Pass `--force` only if you really mean to
   replace that site's contents. (CLI 0.1.19+; before 0.1.35 an explicit `--slug`
   was refused here instead.)
+
+### Two addresses (paid orgs get a short one)
+A site always answers on its global address, `https://{slug}.ooda.run` — suffix
+and all. That address never changes and always works.
+
+An org on a paid plan that has chosen an organisation slug **also** gets a short
+address for every one of its sites (CLI 0.1.37+):
+
+```
+https://acme-marketing-k3x9.ooda.run     the global address — always works
+https://acme-marketing.near-future.ooda.run   the short address — one org only
+```
+
+- The short one drops the random suffix, because the org name already makes it
+  unique. Two orgs can both own `blog`.
+- **Exactly one of the two is canonical, and the other redirects to it.** While
+  the org pays, the global address 301s to the short one. If the org stops
+  paying, the redirect reverses. **No link ever breaks**, whichever one was
+  shared.
+- The org does not choose per site. Every site in the org gets its short
+  address at once, with no republish.
+
+What this means for you:
+
+- **Share the address the CLI printed.** `ooda publish` prints the canonical one
+  first and the other under `Also at:`. Don't build a URL yourself from the slug.
+- With `--json`, read `prettyUrl` when it is there and `url` otherwise.
+- `ooda publish` records both in `ooda.json` — `urls.canonical` (share this),
+  `urls.plain`, and `siteName` (the short name). They are written by the CLI and
+  are read-only: editing them by hand does nothing, because renaming a site is a
+  server operation.
+- **A brand-new organisation subdomain needs a minute or two** before its TLS
+  certificate exists. The CLI says so when it happens. Share the plain address
+  until then; it works immediately.
+
+The random suffix rule is unchanged by any of this — the global slug is always
+suffixed, and the short name is separate.
 
 ### Is the project publishable?
 ooda serves a **static snapshot** (built HTML/CSS/JS) — there is no running
@@ -402,7 +441,9 @@ reports nothing missing.
 
 ## What to tell the user
 
-- After publishing, always share the live `https://<slug>.ooda.run` URL.
+- After publishing, always share the live URL **exactly as the CLI printed it**.
+  On a paid org that is the short `{site}.{org}.ooda.run` address; otherwise it
+  is `{slug}.ooda.run`. See "Two addresses".
 - **New sites may default to `login` access** (org members only). If the user
   wants it openly shareable, run `ooda sites access <slug> --mode public` and tell
   them it's now public. If you leave it login-gated, tell them only members of
@@ -460,6 +501,11 @@ ooda --help
 - **"… contains a word that isn't allowed on ooda.run"** → the slug, title,
   description, or tags tripped the banned-word filter. A suffix won't help —
   choose a different name for the flagged field. Don't retry the same value.
+- **The short `{site}.{org}.ooda.run` address fails TLS right after publishing**
+  → the organisation's subdomain is new and its certificate is still being
+  issued. It takes a minute or two. Share the plain `{slug}.ooda.run` address
+  meanwhile — it works immediately, and it redirects to the short one once the
+  certificate lands.
 - **Visiting the URL loops or shows "you don't have access"** → the site is
   `login`-gated and you're signed in to an account that isn't in the site's org.
   Make it public (`ooda sites access <slug> --mode public`) or sign in with an
