@@ -12,7 +12,7 @@ an agent to do, and what the CLI it drives can access.
 |--------|-------|-----|
 | Read the project directory | Build output (`dist`, `build`, `out`, …) and `ooda.json` | Upload the built site |
 | Write `ooda.json` | Project root | Persist the site slug and display metadata between publishes |
-| Write `~/.ooda/auth.json` (mode 0600) | User home | Store the org session after login |
+| Write `~/.ooda/auth.json` (mode 0600) | User home | Store the org session after login, and the current org after `ooda switch` |
 | Network | HTTPS to `api.ooda.run` only | Publish files, manage sites, set secrets |
 
 The CLI does not read files outside the project directory and `~/.ooda/`. It

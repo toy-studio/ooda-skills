@@ -11,7 +11,8 @@ description: >
   my ooda sites", "password-protect / make public / unpublish a site", "set an
   env var / API key / secret for my site", "use window.__OODA_ENV__",
   "call an authenticated/OpenAI API from a published site", "proxy a secret API
-  key", "wire up the ooda.json secrets manifest".
+  key", "wire up the ooda.json secrets manifest", "which ooda org am I in",
+  "switch to my other org".
 ---
 
 # ooda
@@ -91,6 +92,28 @@ preference:
      cancels any earlier one — use the latest email.
    - If the account is in several orgs, pass `--org <id>` (the error lists the
      options).
+
+### Several orgs (CLI 0.1.38+)
+
+One account can belong to several orgs. Every command acts on **one** org at a
+time: the current org, which `ooda whoami` prints. Sites, access defaults and
+secrets all belong to an org, so check it before you publish or change anything.
+
+```bash
+ooda orgs [--json]          # list the account's orgs; marks the current one
+ooda switch <org-id> [--json]   # make another org the current one
+```
+
+- A switch changes only the saved org in `~/.ooda/auth.json`. It needs no new
+  login, and it lasts until the next switch.
+- **Do not switch on your own.** If the user did not name the org, and
+  `ooda orgs` lists more than one, ask which org to use.
+- A publish goes to the current org. The same slug in a different org is a
+  different site, so switching and publishing again creates a new site.
+- With `OODA_ACCESS_TOKEN` + `OODA_ORG_ID` set, the org comes from
+  `OODA_ORG_ID` and `ooda switch` refuses. Change that variable instead.
+- Joining another org happens in the dashboard (an email invite or a join
+  link), never from the CLI. After a join, `ooda orgs` shows the new org.
 
 ## Publish a site
 
@@ -479,6 +502,9 @@ ooda --help
 
 - **`npx @oodarun/cli` fails or behaves unexpectedly in your shell** → install
   the CLI globally (`npm install -g @oodarun/cli`) and use the `ooda` command.
+- **A site or secret you expect is missing** → the current org may be the wrong
+  one. Run `ooda whoami`, then `ooda orgs`, and ask the user before you run
+  `ooda switch`.
 - **It tries to prompt for a login** → no saved session and no env vars. Have the
   user run `ooda` and log in once, or set `OODA_ACCESS_TOKEN` + `OODA_ORG_ID`.
 - **"No build output found"** → run the project's build first, and run `ooda
