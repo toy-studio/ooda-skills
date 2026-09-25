@@ -32,19 +32,33 @@ Use this skill when the user wants to:
 
 ## Install
 
-Install the CLI globally and use the `ooda` command — it prints an "update
-available" nudge when a newer version is published, so a global install won't go
-stale:
+First check for an existing install with `ooda --version`. If the command is
+not found, install the standalone binary. It does not need Node.js:
+
+```bash
+curl -fsSL https://ooda.run/install | sh
+```
+
+The installer puts `ooda` in `~/.ooda/bin` and adds that folder to the shell
+profile. Your current shell does not read the profile again, so run
+`export PATH="$HOME/.ooda/bin:$PATH"` before the next `ooda` command, or use
+`~/.ooda/bin/ooda`. The binary supports macOS and Linux on x64 and arm64.
+
+On Windows, on musl Linux (for example Alpine), or when the user prefers npm,
+install the npm package. It needs Node.js 20+:
 
 ```bash
 npm install -g @oodarun/cli
 ```
 
-Requirements: Node.js 20+, and an ooda account in an organization (publishing is
-org-scoped).
+Either way, the CLI prints an "update available" notice when a newer version
+is published. To update, run `ooda upgrade` for the standalone binary, or
+`npm install -g @oodarun/cli` for the npm package.
+
+You also need an ooda account in an organization (publishing is org-scoped).
 
 > You can also run without installing via `npx @oodarun/cli@latest <command>`,
-> but prefer the global `ooda` command — it is shorter and more reliable
+> but prefer the installed `ooda` command — it is shorter and more reliable
 > across shells. All examples below use `ooda`.
 
 To (re)install this skill: `npx skills add toy-studio/ooda-skills -g` (see the
@@ -476,8 +490,10 @@ reports nothing missing.
 ## Security & data access
 
 This skill is documentation only — it ships no code. It teaches the agent to
-drive the published [`@oodarun/cli`](https://www.npmjs.com/package/@oodarun/cli).
-What that CLI touches:
+drive the ooda CLI: the standalone binary from `https://ooda.run/install`
+(downloaded from `api.ooda.run` and checked against its published SHA-256
+checksums), or the [`@oodarun/cli`](https://www.npmjs.com/package/@oodarun/cli)
+npm package. What that CLI touches:
 
 - **Reads** the project directory: the build output and `ooda.json`.
 - **Writes** `ooda.json` (slug + metadata) and the session file
@@ -501,7 +517,12 @@ ooda --help
 ## Troubleshooting
 
 - **`npx @oodarun/cli` fails or behaves unexpectedly in your shell** → install
-  the CLI globally (`npm install -g @oodarun/cli`) and use the `ooda` command.
+  the CLI (`curl -fsSL https://ooda.run/install | sh`) and use the `ooda` command.
+- **`ooda: command not found` just after the install** → the current shell has
+  not read the updated profile. Run `export PATH="$HOME/.ooda/bin:$PATH"`, or
+  call `~/.ooda/bin/ooda` directly.
+- **`ooda upgrade` says the CLI was installed with npm** → update it with
+  `npm install -g @oodarun/cli` instead.
 - **A site or secret you expect is missing** → the current org may be the wrong
   one. Run `ooda whoami`, then `ooda orgs`, and ask the user before you run
   `ooda switch`.
@@ -511,11 +532,11 @@ ooda --help
   publish` from the project root (not the build folder).
 - **"New site URLs get a random suffix" / `suffix_required`** → you're on an
   older CLI (< 0.1.32) publishing a new site with an explicit `--slug`. Update
-  the CLI (`npm install -g @oodarun/cli`) — newer versions append the required
+  the CLI (`ooda upgrade`, or `npm install -g @oodarun/cli` for an npm install) — newer versions append the required
   suffix automatically.
 - **"Slug … is taken by another organisation" / "… is reserved for ooda.run's
   own pages"** → shouldn't happen on CLI 0.1.35+, which suffixes past both and
-  publishes. If you see it, update the CLI (`npm install -g @oodarun/cli`); as a
+  publishes. If you see it, update the CLI (`ooda upgrade`, or `npm install -g @oodarun/cli` for an npm install); as a
   one-off, publishing with any `--slug` variant (`<name>-app`) also works.
 - **"ooda.run rejected 5 slugs …"** (older CLIs: "Couldn't find a free slug
   after 5 attempts") → the CLI tried five suffixed names and every one was
