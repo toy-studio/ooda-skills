@@ -123,9 +123,36 @@ ooda switch <org-id> [--json]   # make another org the current one
 - **Do not switch on your own.** If the user did not name the org, and
   `ooda orgs` lists more than one, ask which org to use.
 - A publish goes to the current org. The same slug in a different org is a
-  different site, so switching and publishing again creates a new site.
+  different site.
 - With `OODA_ACCESS_TOKEN` + `OODA_ORG_ID` set, the org comes from
   `OODA_ORG_ID` and `ooda switch` refuses. Change that variable instead.
+
+#### Act on another org for one command: `--org` (CLI 0.1.39+)
+
+```bash
+ooda publish --org <org-id> [--json]
+ooda sites list --org <org-id> [--json]
+ooda secrets list --org <org-id> [--json]
+```
+
+- `--org` works on `publish`, `sites` and `secrets`. The current org does not
+  change. **Prefer `--org` to `ooda switch`** when the user names an org for
+  one task: it leaves their current org as it was.
+- The CLI checks that the account is a member. An unknown org fails and lists
+  the org ids you can use.
+- Other commands (`orgs`, `whoami`, `switch`, …) refuse `--org`.
+- With `OODA_ORG_ID` set, `--org` must name that same org.
+
+#### `ooda.json` remembers the org (CLI 0.1.39+)
+
+- `ooda publish` writes `orgId` into `ooda.json` next to `slug`. A re-publish
+  goes to that org, **whatever the current org is**. You do not need `--org`
+  or `ooda switch` to update a site.
+- `--org` with an org other than the recorded `orgId` fails. To publish a
+  **separate copy** in the other org, also pass `--slug <new-name>`.
+- An older `ooda.json` without `orgId` whose slug is in another of your orgs
+  fails with `Run: ooda publish --org <org-id>`. Run that command. Do not pass
+  a new `--slug`, because that makes a second site.
 - Joining another org happens in the dashboard (an email invite or a join
   link), never from the CLI. After a join, `ooda orgs` shows the new org.
 
@@ -133,7 +160,7 @@ ooda switch <org-id> [--json]   # make another org the current one
 
 ```bash
 # Run from the PROJECT ROOT — not the build folder.
-ooda publish [--slug <slug>] [--title "<name>"] [--description "<text>"] [--tags <a,b,c>] [--message "<what changed>"] [--json]
+ooda publish [--slug <slug>] [--org <org-id>] [--title "<name>"] [--description "<text>"] [--tags <a,b,c>] [--message "<what changed>"] [--json]
 ```
 
 - Publishes an **already-built** static site — it does **not** run your build.
@@ -282,7 +309,7 @@ What this means for you:
   first and the other under `Also at:`. Don't build a URL yourself from the slug.
 - With `--json`, read `prettyUrl` when it is there and `url` otherwise.
 - `ooda publish` records both in `ooda.json` — `urls.canonical` (share this),
-  `urls.plain`, and `siteName` (the short name). They are written by the CLI and
+  `urls.plain`, and `siteName` (the short name), with `orgId`. They are written by the CLI and
   are read-only: editing them by hand does nothing, because renaming a site is a
   server operation.
 - **A brand-new organisation subdomain needs a minute or two** before its TLS
