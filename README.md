@@ -32,7 +32,10 @@ curl -fsSL https://raw.githubusercontent.com/toy-studio/ooda-skills/main/skills/
 
 ## Requirements
 
-- Node.js 20+ (the skill drives the [`@oodarun/cli`](https://www.npmjs.com/package/@oodarun/cli) npm package).
+- The ooda CLI. Install the standalone binary with
+  `curl -fsSL https://ooda.run/install | sh` (macOS and Linux, no Node.js
+  needed), or the [`@oodarun/cli`](https://www.npmjs.com/package/@oodarun/cli)
+  npm package with Node.js 20+.
 - An ooda account in an organization. The user logs in once with `ooda login`
   (the saved session in `~/.ooda/auth.json` is reused), or sets the
   `OODA_ACCESS_TOKEN` + `OODA_ORG_ID` environment variables for headless use.
