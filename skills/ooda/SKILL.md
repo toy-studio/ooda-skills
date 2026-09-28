@@ -51,6 +51,12 @@ install the npm package. It needs Node.js 20+:
 npm install -g @oodarun/cli
 ```
 
+**In a cloud sandbox** (Claude Code on the web, Codex, ChatGPT, Claude.ai;
+`HTTPS_PROXY` is usually set), install the npm package instead. The sandboxes
+include Node.js and allow the npm registry, and the Node CLI (0.1.40+) uses the
+sandbox proxy. Some sandbox proxies do not work with the standalone binary.
+See "Cloud sandboxes" below.
+
 Either way, the CLI prints an "update available" notice when a newer version
 is published. To update, run `ooda upgrade` for the standalone binary, or
 `npm install -g @oodarun/cli` for the npm package.
@@ -104,8 +110,39 @@ preference:
      email tools. The user reads the email and relays the code themselves.
    - The code is single-use and expires after 10 minutes. Requesting a new code
      cancels any earlier one — use the latest email.
-   - If the account is in several orgs, pass `--org <id>` (the error lists the
-     options).
+   - If the account is in several orgs, pass `--org <id>` when you know the org.
+     Without it, CLI 0.1.40+ saves the session in one org and lists the others
+     (`orgs` in the `--json` output). Tell the user which org is current, and
+     ask before you `ooda switch`. An older CLI spends the code and fails, so
+     on those always pass `--org`.
+
+### Cloud sandboxes
+
+A cloud agent runs in a sandbox that keeps no session and usually blocks ooda.
+Symptoms: `fetch failed`, `ENOTFOUND`, a 403 from the proxy, or a message that
+the host is not in the allowlist. You cannot change the network yourself. Tell
+the user the setting for their product, then retry:
+
+- **Claude Code on the web:** in the environment settings, set **Network
+  access** to **Custom**. Add `ooda.run` and `*.ooda.run` to **Allowed
+  domains**, and select **Also include default list of common package
+  managers**. The change applies to a new session.
+- **Codex:** in the cloud environment settings, set **Agent internet access**
+  to **On**. Choose the **Common dependencies** allowlist and add `ooda.run`
+  and `api.ooda.run`. Keep all HTTP methods allowed, because a publish uses
+  `POST`.
+- **ChatGPT:** no setup is usually necessary. If a request fails, the user
+  checks **Settings → Data controls → Work network access**.
+- **Claude.ai:** in **Settings → Capabilities → Code execution and file
+  creation**, turn on **Allow network egress**. If the allowlist is not **All
+  domains**, add `ooda.run` and `*.ooda.run`. On Team and Enterprise plans, an
+  admin controls this setting.
+
+Then install with npm, and sign in with the email-code path (path 3 above) in
+every new sandbox. Ask for the code once, and pass `--org` on the first verify
+if the user named an org, because a failed verify can spend the code. If an
+older CLI (< 0.1.40) fails with `fetch failed` although the domains are
+allowed, update it, or run it with `NODE_USE_ENV_PROXY=1`.
 
 ### Several orgs (CLI 0.1.38+)
 
@@ -553,6 +590,10 @@ ooda --help
 - **A site or secret you expect is missing** → the current org may be the wrong
   one. Run `ooda whoami`, then `ooda orgs`, and ask the user before you run
   `ooda switch`.
+- **`fetch failed`, `ENOTFOUND` or a proxy 403 in a cloud sandbox** → the
+  sandbox blocks ooda. See "Cloud sandboxes" for the setting to give the user.
+  If the domains are allowed and an older CLI still fails, update it
+  (`npm install -g @oodarun/cli`) or set `NODE_USE_ENV_PROXY=1`.
 - **It tries to prompt for a login** → no saved session and no env vars. Have the
   user run `ooda` and log in once, or set `OODA_ACCESS_TOKEN` + `OODA_ORG_ID`.
 - **"No build output found"** → run the project's build first, and run `ooda
