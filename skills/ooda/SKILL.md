@@ -89,9 +89,20 @@ preference:
    `~/.ooda/auth.json` and reused by every later command. Tell them:
    > "Run `ooda login` once, then I can publish for you."
 
-2. **Environment variables (headless / CI).** Set both and the CLI skips login:
-   - `OODA_ACCESS_TOKEN` — the user's JWT.
-   - `OODA_ORG_ID` — the org to act in.
+2. **An access token (cloud sandbox / CI; CLI 0.1.41+).** When `OODA_TOKEN` is
+   set, the CLI signs in with it by itself. Do NOT run `ooda login`. Just run
+   the command. The user creates the token in the dashboard (Account → Create
+   token) and adds `OODA_TOKEN=ooda_pat_…` to the environment variables of the
+   sandbox or CI. You cannot create a token yourself. See "Cloud sandboxes".
+   - The org comes from `OODA_ORG_ID`, then the token's default org, then the
+     user's only org. `--org` still works. `ooda switch` refuses under a token.
+   - A token has scopes, and it never does admin work. A 403 with
+     `insufficient_scope` names the missing scope: tell the user to create a
+     token with it. A 403 with `token_not_allowed` means no token can do this:
+     the user does it in the dashboard. Never retry either 403 with another slug.
+   - Never print the token, and never write it to a file.
+   - The older pair `OODA_ACCESS_TOKEN` (a JWT) + `OODA_ORG_ID` also skips
+     login, but the JWT expires after 1 hour.
 
 3. **Email-code login from chat (fallback; CLI 0.1.15+).** Use this only when
    the user can't run a terminal themselves. The user stays in control of the
@@ -138,8 +149,18 @@ the user the setting for their product, then retry:
   domains**, add `ooda.run` and `*.ooda.run`. On Team and Enterprise plans, an
   admin controls this setting.
 
-Then install with npm, and sign in with the email-code path (path 3 above) in
-every new sandbox. Ask for the code once, and pass `--org` on the first verify
+Then install with npm (`npm install -g @oodarun/cli`). If `OODA_TOKEN` is set,
+the CLI is already signed in (path 2 above). If it is not set, tell the user
+that a token removes the email code from every new session:
+
+- **Claude Code on the web:** add `OODA_TOKEN=…` to **Environment variables**
+  in the environment settings, then start a new session.
+- **Codex:** add it to **Environment variables**, not **Secrets**. Codex
+  removes secrets before the agent starts.
+- **ChatGPT and Claude.ai** have no environment variables. Use the email code.
+
+Without a token, sign in with the email-code path (path 3 above) in every new
+sandbox. Ask for the code once, and pass `--org` on the first verify
 if the user named an org, because a failed verify can spend the code. If an
 older CLI (< 0.1.40) fails with `fetch failed` although the domains are
 allowed, update it, or run it with `NODE_USE_ENV_PROXY=1`.
@@ -163,6 +184,8 @@ ooda switch <org-id> [--json]   # make another org the current one
   different site.
 - With `OODA_ACCESS_TOKEN` + `OODA_ORG_ID` set, the org comes from
   `OODA_ORG_ID` and `ooda switch` refuses. Change that variable instead.
+- With `OODA_TOKEN` set, `ooda switch` also refuses. Use `--org`, or ask the
+  user to set `OODA_ORG_ID` or the token's default org.
 
 #### Act on another org for one command: `--org` (CLI 0.1.39+)
 
@@ -595,7 +618,10 @@ ooda --help
   If the domains are allowed and an older CLI still fails, update it
   (`npm install -g @oodarun/cli`) or set `NODE_USE_ENV_PROXY=1`.
 - **It tries to prompt for a login** → no saved session and no env vars. Have the
-  user run `ooda` and log in once, or set `OODA_ACCESS_TOKEN` + `OODA_ORG_ID`.
+  user run `ooda` and log in once. In a sandbox or CI, have the user set
+  `OODA_TOKEN` (CLI 0.1.41+).
+- **A 403 with `insufficient_scope` or `token_not_allowed`** → the access token
+  cannot do this. See path 2 in "Authentication". Do not retry.
 - **"No build output found"** → run the project's build first, and run `ooda
   publish` from the project root (not the build folder).
 - **"New site URLs get a random suffix" / `suffix_required`** → you're on an
