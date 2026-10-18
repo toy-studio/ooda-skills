@@ -149,8 +149,11 @@ the user the setting for their product, then retry:
   to **On**. Choose the **Common dependencies** allowlist and add `ooda.run`
   and `api.ooda.run`. Keep all HTTP methods allowed, because a publish uses
   `POST`.
-- **ChatGPT:** no setup is usually necessary. If a request fails, the user
-  checks **Settings → Data controls → Work network access**.
+- **ChatGPT:** code in a **Chat** conversation cannot reach ooda. The user
+  switches the toggle at the top of ChatGPT from **Chat** to **Work** and
+  starts a new Work conversation; you cannot continue from the blocked one. If
+  a Work conversation is blocked too, the user turns on **Settings → Data
+  controls → Work network access**. In a workspace, an admin controls it.
 - **Claude.ai:** in **Settings → Capabilities → Code execution and file
   creation**, turn on **Allow network egress**. If the allowlist is not **All
   domains**, add `ooda.run` and `*.ooda.run`. On Team and Enterprise plans, an
