@@ -91,16 +91,23 @@ preference:
 
 2. **An access token (cloud sandbox / CI; CLI 0.1.41+).** When `OODA_TOKEN` is
    set, the CLI signs in with it by itself. Do NOT run `ooda login`. Just run
-   the command. The user creates the token in the dashboard (Account → Create
-   token) and adds `OODA_TOKEN=ooda_pat_…` to the environment variables of the
-   sandbox or CI. You cannot create a token yourself. See "Cloud sandboxes".
+   the command. The user creates the token in the dashboard and adds
+   `OODA_TOKEN=ooda_pat_…` to the environment variables of the sandbox or CI.
+   You cannot create a token yourself. See "Cloud sandboxes".
+   - Give the user this link. It opens **Create a token** with a name and the
+     two scopes a publish needs filled in, and the user clicks **Create token**:
+     `https://app.ooda.run/account?new-token&name=Cloud%20agent&scopes=sites:read,sites:write`
+     The `scopes` list is comma-separated: `sites:read`, `sites:write`,
+     `sites:delete`, `secrets:write`. Ask only for the scopes the task needs.
+     The link cannot set the expiry; the dashboard's default is 90 days.
    - The org comes from `OODA_ORG_ID`, then the token's default org, then the
      user's only org. `--org` still works. `ooda switch` refuses under a token.
    - A token has scopes, and it never does admin work. A 403 with
-     `insufficient_scope` names the missing scope: tell the user to create a
-     token with it. A 403 with `token_not_allowed` means no token can do this:
+     `insufficient_scope` names the missing scope: give the user the link
+     above with that scope added to `scopes`. A 403 with `token_not_allowed` means no token can do this:
      the user does it in the dashboard. Never retry either 403 with another slug.
-   - Never print the token, and never write it to a file.
+   - Never print the token, and never write it to a file. Never ask the user
+     to paste it into the chat: it belongs in the environment settings.
    - The older pair `OODA_ACCESS_TOKEN` (a JWT) + `OODA_ORG_ID` also skips
      login, but the JWT expires after 1 hour.
 
@@ -151,7 +158,8 @@ the user the setting for their product, then retry:
 
 Then install with npm (`npm install -g @oodarun/cli`). If `OODA_TOKEN` is set,
 the CLI is already signed in (path 2 above). If it is not set, tell the user
-that a token removes the email code from every new session:
+that a token removes the email code from every new session, give them the
+create-token link from path 2, and say where the `OODA_TOKEN=…` line goes:
 
 - **Claude Code on the web:** add `OODA_TOKEN=…` to **Environment variables**
   in the environment settings, then start a new session.
