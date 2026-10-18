@@ -78,7 +78,7 @@ ooda commands need an org session — an **existing** account (signup is invite-
 command may trigger an interactive prompt you can't answer):
 
 ```bash
-ooda whoami   # exits 0 + prints the org when signed in, non-zero otherwise
+ooda whoami   # exits 0 + prints the org and your role in it when signed in, non-zero otherwise
 ```
 
 If it exits non-zero, authenticate with one of these paths, in order of
@@ -211,8 +211,9 @@ ooda secrets list --org <org-id> [--json]
 - `--org` with an org other than the recorded `orgId` fails. To publish a
   **separate copy** in the other org, also pass `--slug <new-name>`.
 - An older `ooda.json` without `orgId` whose slug is in another of your orgs
-  fails with `Run: ooda publish --org <org-id>`. Run that command. Do not pass
-  a new `--slug`, because that makes a second site.
+  fails with `code: "site_in_other_org"` and the command to run,
+  `ooda publish --org <org-id>`. Run that command. Do not pass a new `--slug`
+  or `--new`, because that makes a second site.
 - Joining another org happens in the dashboard (an email invite or a join
   link), never from the CLI. After a join, `ooda orgs` shows the new org.
 
@@ -220,7 +221,7 @@ ooda secrets list --org <org-id> [--json]
 
 ```bash
 # Run from the PROJECT ROOT — not the build folder.
-ooda publish [--slug <slug>] [--org <org-id>] [--title "<name>"] [--description "<text>"] [--tags <a,b,c>] [--message "<what changed>"] [--json]
+ooda publish [--slug <slug>] [--org <org-id>] [--title "<name>"] [--description "<text>"] [--tags <a,b,c>] [--message "<what changed>"] [--dry-run] [--new] [--json]
 ```
 
 - Publishes an **already-built** static site — it does **not** run your build.
@@ -233,10 +234,15 @@ ooda publish [--slug <slug>] [--org <org-id>] [--title "<name>"] [--description 
   - ✅ `ooda publish ./my-app` (path to a project root)
   - ❌ `ooda publish ./dist` — **wrong**: it looks for a build dir *inside*
     `./dist` and fails. Don't pass the build folder.
+- Before it uploads, it prints what it is about to do (CLI 0.1.43+):
+  `→ Updating Acme/my-app-k3x9 (v3 → v4)` or
+  `→ Creating a new site in Acme: my-app-k3x9`. **`--dry-run` prints only that
+  and uploads nothing** — use it when you are not sure which site a publish
+  will touch.
 - On success it prints the live URL, e.g. `https://my-app-k3x9.ooda.run` —
   note the short random suffix; every new site gets one (see "Naming the site").
-- `--json` gives machine-readable output: `{ ok, url, slug, version, fileCount,
-  totalSize, promoted, live }`, plus `requestedSlug` when the name you asked for
+- `--json` gives machine-readable output: `{ ok, action, url, slug, version, fileCount,
+  totalSize, promoted, live }` (`action` is `"update"` or `"create"`, CLI 0.1.43+), plus `requestedSlug` when the name you asked for
   wasn't available and the CLI published to a different one (CLI 0.1.35+), plus
   `prettyUrl` when the org has a short address (CLI 0.1.37+ — see "Two addresses").
   **Always read the slug/URL back from the output rather than assuming the one
@@ -272,10 +278,11 @@ after **the user's project**, not the tool.
   early — share the **exact URL the CLI printed**, which includes the suffix.
 
 ### Reserved & disallowed names
-The server enforces a naming policy on every publish. **An unavailable name
+The server enforces a naming policy on every publish. **A new site's name
 does not fail the publish** (CLI 0.1.35+): the CLI resolves it and prints where
 the site actually landed, so you never need to hunt for a free slug or retry
-with a different one.
+with a different one. (A slug that names an *existing* site is different — see
+"Publishing to an existing site".)
 
 - **Random suffix (every new site).** A NEW site's slug must end in a random
   suffix (4 trailing characters including a digit). The CLI handles this
@@ -330,17 +337,29 @@ URLs 301-redirect to the bare `{slug}.ooda.run` — so old shared links don't br
   project keeps the same URL** — suffix included.
 - With `--slug <name>` you choose the base explicitly. A new site still gains
   the random suffix (CLI 0.1.32+).
-- **A taken or reserved name never fails the publish** (CLI 0.1.35+). Whatever
-  the slug's origin — derived, `--slug`, or the one saved in `ooda.json` — the
-  CLI rolls a fresh suffix (or takes the alternative the server suggests) and
-  publishes there. **Don't try to pick a free slug yourself, and don't retry a
+- **A new site's name never fails the publish** (CLI 0.1.35+). A folder name
+  that is taken or reserved resolves to a fresh suffix (or the alternative the
+  server suggests). **Don't try to pick a free slug yourself, and don't retry a
   publish with a different name because one was unavailable** — read the slug
   and URL the CLI printed instead.
-- **It won't clobber a different site in your org.** If the slug already belongs
-  to another project in your org, the publish goes to a new suffixed slug rather
-  than overwriting it, and says so. Pass `--force` only if you really mean to
-  replace that site's contents. (CLI 0.1.19+; before 0.1.35 an explicit `--slug`
-  was refused here instead.)
+
+### Publishing to an existing site (CLI 0.1.43+)
+**A slug from `--slug` or `ooda.json` that names an existing site means that
+site.** The publish updates it, or stops with exit code 1 and a `code` — it
+never publishes a copy somewhere else. (Older CLIs quietly published a suffixed
+copy here with `"ok": true` and pointed `ooda.json` at it.)
+
+| `code` | What it means | What to do |
+|---|---|---|
+| `not_site_owner` | Another member owns the site. `owner`, `yourRole` and `requiredRole` say who and why. | **Stop and tell the user.** The owner or an org admin has to publish it. |
+| `site_exists` | A site in your org that this folder's `ooda.json` doesn't point at. | **Ask the user** whether to replace it (`--force`) or make a copy (`--new`). |
+| `site_in_other_org` | The site is in another of your orgs. | Run the `--org <org-id>` command it gives. |
+| `slug_taken` | The site belongs to an org you are not in. | **Stop and tell the user.** |
+
+Every refusal lists its fixes under `fix`, each with the exact `command` to run.
+**Never reach for `--new` on your own** to get past a refusal: it makes a second
+site, which is the thing the refusal is there to prevent. Use it only when the
+user asks for a separate copy — it then points `ooda.json` at the new site.
 
 ### Two addresses (paid orgs get a short one)
 A site always answers on its global address, `https://{slug}.ooda.run` — suffix
