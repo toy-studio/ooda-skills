@@ -346,6 +346,10 @@ URLs 301-redirect to the bare `{slug}.ooda.run` — so old shared links don't br
   name) and appends the required random suffix for a new site.
 - It writes the resolved slug back to `ooda.json`, so **re-publishing the same
   project keeps the same URL** — suffix included.
+- It also writes the `version` it published (CLI 0.1.44+). The next publish
+  sends it back, so if a teammate has published a newer version since, the
+  publish stops with `stale_base` instead of replacing their work. Don't edit
+  `version` by hand to get past it.
 - With `--slug <name>` you choose the base explicitly. A new site still gains
   the random suffix (CLI 0.1.32+).
 - **A new site's name never fails the publish** (CLI 0.1.35+). A folder name
@@ -366,6 +370,7 @@ copy here with `"ok": true` and pointed `ooda.json` at it.)
 | `site_exists` | A site in your org that this folder's `ooda.json` doesn't point at. | **Ask the user** whether to replace it (`--force`) or make a copy (`--new`). |
 | `site_in_other_org` | The site is in another of your orgs. | Run the `--org <org-id>` command it gives. |
 | `slug_taken` | The site belongs to an org you are not in. | **Stop and tell the user.** |
+| `stale_base` | Someone published a newer version since this folder last did (CLI 0.1.44+). `latest` says who, when, and their `message`. | **Stop and tell the user** who changed the site. They bring those changes into this folder first; use `--force` only if the user says to replace them. |
 
 Every refusal lists its fixes under `fix`, each with the exact `command` to run.
 **Never reach for `--new` on your own** to get past a refusal: it makes a second
