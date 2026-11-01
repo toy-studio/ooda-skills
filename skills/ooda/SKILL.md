@@ -12,7 +12,8 @@ description: >
   env var / API key / secret for my site", "use window.__OODA_ENV__",
   "call an authenticated/OpenAI API from a published site", "proxy a secret API
   key", "wire up the ooda.json secrets manifest", "which ooda org am I in",
-  "switch to my other org".
+  "switch to my other org", "publish this from Claude / ChatGPT chat", "add the
+  ooda connector".
 ---
 
 # ooda
@@ -29,6 +30,46 @@ Use this skill when the user wants to:
 - **Set env vars & secrets** for a site (non-secret config reaches the
   page as `window.__OODA_ENV__`; true secrets never do).
 - **Unpublish** a site.
+
+## In a chat with no shell: the ooda connector
+
+In Claude or ChatGPT chat you may have no shell, so no CLI. If your tools
+include `publish_site`, `list_sites`, `get_site_files`, `set_access`,
+`set_variable` and `delete_site` from ooda, the user has connected ooda, and you
+use those tools instead of everything below. The connection already covers one
+org and is signed in, so skip Install and Authentication.
+
+- **Publish:** call `publish_site` with every file inline (text as-is, binary as
+  base64 with `encoding: "base64"`); an `index.html` at the root is required.
+  Set `title` and `description`. Leave out `slug` to create a new site; pass a
+  `slug` from `list_sites` or an earlier publish to update that site. Share the
+  URL it returns. Keep it small: a few files, well under 1 MB.
+- **Change a site you didn't just publish:** call `get_site_files` first, edit
+  the files, and pass its `version` as `baseVersion` to `publish_site`, so a
+  teammate's newer version is never replaced. On a stale-base refusal, read the
+  files again and redo the change.
+- **Access, variables, delete:** `set_access` (`login`, `password`, `public`,
+  `org_default`); `set_variable` (write-only, nothing reads a value back; pass
+  `slug` for one site, leave it out for an org-wide value, which only admins
+  may set); `delete_site` only after the user confirms.
+- A tool error is a sentence for the user: relay it. A missing permission means
+  the user approved fewer scopes; they reconnect and approve them.
+
+If the tools are missing and you have no shell, don't try the sandbox steps.
+Tell the user to add the connector once, with the address
+`https://api.ooda.run/mcp`:
+
+- **Claude:** **Settings → Connectors → Add custom connector**, name `ooda`,
+  the address above, **Sign in now** with the recommended OAuth client, then
+  **Connect**. On Team and Enterprise plans an Owner adds it under
+  **Organization settings → Connectors**.
+- **ChatGPT** (on chatgpt.com, not the mobile app): turn on **Settings → Apps &
+  Connectors → Advanced settings → Developer mode**, then **Create**, name
+  `ooda`, the address above, authentication **OAuth**.
+
+Either one opens ooda's sign-in page, where the user picks the org and clicks
+**Approve**. Then they enable ooda in a new chat. Details:
+https://ooda.run/docs#chat-apps
 
 ## Install
 
@@ -168,7 +209,9 @@ create-token link from path 2, and say where the `OODA_TOKEN=…` line goes:
   in the environment settings, then start a new session.
 - **Codex:** add it to **Environment variables**, not **Secrets**. Codex
   removes secrets before the agent starts.
-- **ChatGPT and Claude.ai** have no environment variables. Use the email code.
+- **ChatGPT and Claude.ai** have no environment variables. Use the email code,
+  or have the user add the ooda connector instead (see "In a chat with no
+  shell"), which needs no sandbox setup at all.
 
 Without a token, sign in with the email-code path (path 3 above) in every new
 sandbox. Ask for the code once, and pass `--org` on the first verify
