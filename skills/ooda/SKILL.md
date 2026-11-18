@@ -76,8 +76,19 @@ Tell the user to add the connector once, with the address
 - **ChatGPT** (on chatgpt.com, not the mobile app): turn on **Settings → Apps &
   Connectors → Advanced settings → Developer mode**, then **Create**, name
   `ooda`, the address above, authentication **OAuth**.
+- **Cursor:** add `"ooda": { "url": "https://api.ooda.run/mcp" }` under
+  `mcpServers` in `~/.cursor/mcp.json` (or a project's `.cursor/mcp.json`).
+  For a whole Cursor team, so Cloud Agents and Grok Bot get it too, an admin
+  adds the same entry under **Dashboard → Plugins & MCPs → Team MCP servers**,
+  then **Add to Team Marketplace**. No headers or tokens: each person signs
+  in as themselves.
+- **Grok Bot** (desktop app): **Connect apps → Add a custom connector**, name
+  `ooda`, type **Remote HTTPS**, the address above as **Server URL**, headers
+  and Client ID empty, **Add plugin**, then **Authenticate**. If ooda is
+  already in Connect apps (a team admin added it), click it and
+  **Authenticate**.
 
-Either one opens ooda's sign-in page, where the user picks the org and clicks
+Each one opens ooda's sign-in page, where the user picks the org and clicks
 **Approve**. Then they enable ooda in a new chat. Details:
 https://ooda.run/docs#chat-apps
 
