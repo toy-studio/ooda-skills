@@ -44,8 +44,12 @@ org and is signed in, so skip Install and Authentication.
 
 - **Publish:** call `publish_site` with every file inline (text as-is, binary as
   base64 with `encoding: "base64"`); an `index.html` at the root is required.
-  Set `title` and `description`. Leave out `slug` to create a new site; pass a
-  `slug` from `list_sites` or an earlier publish to update that site. Share the
+  Set `title`, `description` and a few `tags`. Leave out `slug` to create a new
+  site; pass a `slug` from `list_sites` or an earlier publish to update that
+  site. To find the site the user means, match `list_sites` on title,
+  description, tags and owner rather than guessing from the slug; narrow it with
+  `query`, `tag` or `owner: "me"`. Each site also reports `openComments` and its
+  `live` version with the note and who published it. Share the
   URL it returns. Keep it small: a few files, well under 1 MB.
 - **Change a site you didn't just publish:** call `get_site_files` first, edit
   the files, and pass its `version` as `baseVersion` to `publish_site`, so a
@@ -506,7 +510,7 @@ proxy (see "Env vars & secrets" below).
 ## Manage published sites
 
 ```bash
-ooda sites list [--json]
+ooda sites list [--query <text>] [--tag <tag>] [--owner <me|email>] [--json]
 ooda sites access <slug> --mode <public|password|login> \
     [--password <pw> | --clear-password] [--clear-mode] [--json]
 ooda sites password <slug> [--json]
@@ -517,7 +521,11 @@ ooda sites delete <slug> [--json]
   and owner. Use `--json` to parse it: the JSON entries also include each site's
   `title`, `description`, and `tags`, so when you need to find the right site to
   re-publish or update, list with `--json` and match on those rather than
-  guessing from the slug. (CLI 0.1.27+.) `canEdit` says whether the user can
+  guessing from the slug. (CLI 0.1.27+.) With many sites, narrow the list with
+  `--query` (title, description, slug, tags, owner), `--tag` or `--owner me`
+  (CLI 0.1.49+). Each entry also has `openComments` and the live version's
+  `liveVersion`, `liveMessage` and `livePublishedBy`: a site with open comments
+  has feedback waiting (see Comments). `canEdit` says whether the user can
   publish to it: they own it, they're one of its editors, or they're an admin.
 - **`sites access <slug>`** — set the access policy:
   - `--mode public` — anyone can view.
