@@ -430,7 +430,7 @@ copy here with `"ok": true` and pointed `ooda.json` at it.)
 
 | `code` | What it means | What to do |
 |---|---|---|
-| `not_site_owner` | Another member owns the site. `owner`, `yourRole` and `requiredRole` say who and why. | **Stop and tell the user.** The owner or an org admin has to publish it. |
+| `not_site_owner` | Another member owns the site and the user isn't one of its editors. `owner`, `yourRole` and `requiredRole` say who and why. | **Stop and tell the user.** The owner or an org admin can add them as an editor from Share on the site's page in the dashboard. |
 | `site_exists` | A site in your org that this folder's `ooda.json` doesn't point at. | **Ask the user** whether to replace it (`--force`) or make a copy (`--new`). |
 | `site_in_other_org` | The site is in another of your orgs. | Run the `--org <org-id>` command it gives. |
 | `slug_taken` | The site belongs to an org you are not in. | **Stop and tell the user.** |
@@ -511,7 +511,8 @@ ooda sites delete <slug> [--json]
   and owner. Use `--json` to parse it: the JSON entries also include each site's
   `title`, `description`, and `tags`, so when you need to find the right site to
   re-publish or update, list with `--json` and match on those rather than
-  guessing from the slug. (CLI 0.1.27+.)
+  guessing from the slug. (CLI 0.1.27+.) `canEdit` says whether the user can
+  publish to it: they own it, they're one of its editors, or they're an admin.
 - **`sites access <slug>`** — set the access policy:
   - `--mode public` — anyone can view.
   - `--mode password --password <pw>` — visitors must enter the password.
