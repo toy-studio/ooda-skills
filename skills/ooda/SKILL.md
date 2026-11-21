@@ -37,8 +37,8 @@ Use this skill when the user wants to:
 
 In Claude or ChatGPT chat you may have no shell, so no CLI. If your tools
 include `publish_site`, `list_sites`, `get_site_files`, `set_access`,
-`set_variable`, `delete_site`, `get_comments`, `reply_to_comment` and
-`resolve_comment` from ooda, the user has connected ooda, and you
+`set_variable`, `delete_site`, `get_comments`, `reply_to_comment`,
+`resolve_comment`, `list_members`, `get_sharing` and `share_site` from ooda, the user has connected ooda, and you
 use those tools instead of everything below. The connection already covers one
 org and is signed in, so skip Install and Authentication.
 
@@ -55,6 +55,12 @@ org and is signed in, so skip Install and Authentication.
   `org_default`); `set_variable` (write-only, nothing reads a value back; pass
   `slug` for one site, leave it out for an org-wide value, which only admins
   may set); `delete_site` only after the user confirms.
+- **Editors:** `get_sharing` shows a site's owner and editors. To let a
+  teammate edit a site, find their exact email with `list_members`, **confirm
+  the person and the site with the user**, then call `share_site` (`role:
+  "none"` takes it away). Only the owner and admins can, and the connection
+  needs the `sites:share` scope. On `not_a_member`, offer the suggested emails;
+  never guess one.
 - **Comments:** when `publish_site` reports `openComments`, or the user asks
   you to work through feedback, call `get_comments` with the slug. Find each
   element from `anchor.text` and `anchor.html` (`anchor.viewport` such as
@@ -522,6 +528,28 @@ ooda sites delete <slug> [--json]
 - **`sites password <slug>`** — reveal the effective password of a
   password-protected site.
 - **`sites delete <slug>`** — unpublish the site and remove its files.
+
+### Editors (CLI 0.1.48+)
+
+```bash
+ooda members [--json]                     # the org's members: name, email, role
+ooda sites sharing <slug> [--json]        # owner and editors
+ooda sites share <slug> <email> [--json]  # let a member edit the site
+ooda sites unshare <slug> <email> [--json]
+```
+
+Editors can publish to the site, pin a version and change its title,
+description and tags. Only the owner and org admins change its access,
+password, variables and editors, so only they can run `share` and `unshare`.
+
+- **Confirm with the user before `share`**: name the person and the site. It
+  widens who can change the site.
+- The person must already be in the org. Take the email from `ooda members`
+  rather than guessing. An unknown email fails with `not_a_member` and
+  `suggestions` (up to three close members): offer those to the user.
+- With `OODA_TOKEN`, `share` and `unshare` need a token with the `sites:share`
+  scope. It is off unless ticked when the token is made; on
+  `insufficient_scope`, ask the user to create one with it.
 
 Every command exits `0` on success and non-zero on failure, printing the server's
 error message. Add `--json` to any command for structured output.
