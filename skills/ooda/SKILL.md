@@ -38,19 +38,24 @@ Use this skill when the user wants to:
 In Claude or ChatGPT chat you may have no shell, so no CLI. If your tools
 include `publish_site`, `list_sites`, `get_site_files`, `set_access`,
 `set_variable`, `delete_site`, `get_comments`, `reply_to_comment`,
-`resolve_comment`, `list_members`, `get_sharing` and `share_site` from ooda, the user has connected ooda, and you
+`resolve_comment`, `list_members`, `get_sharing`, `share_site`,
+`list_collections`, `collect_site` and `uncollect_site` from ooda, the user has connected ooda, and you
 use those tools instead of everything below. The connection already covers one
 org and is signed in, so skip Install and Authentication.
 
 - **Publish:** call `publish_site` with every file inline (text as-is, binary as
   base64 with `encoding: "base64"`); an `index.html` at the root is required.
-  Set `title`, `description` and a few `tags`. Leave out `slug` to create a new
+  Set `title` and `description`. Leave out `slug` to create a new
   site; pass a `slug` from `list_sites` or an earlier publish to update that
   site. To find the site the user means, match `list_sites` on title,
-  description, tags and owner rather than guessing from the slug; narrow it with
-  `query`, `tag` or `owner: "me"`. Each site also reports `openComments` and its
+  description, collections and owner rather than guessing from the slug; narrow
+  it with `query`, `collection` or `owner: "me"`. Each site also reports `openComments` and its
   `live` version with the note and who published it. Share the
   URL it returns. Keep it small: a few files, well under 1 MB.
+- **Collections:** call `list_collections` first, then pass existing names as
+  `collections` to `publish_site`, or use `collect_site` /
+  `uncollect_site`. Never call `create_collection` without asking the user.
+  See "Collections" below for how to choose.
 - **Change a site you didn't just publish:** call `get_site_files` first, edit
   the files, and pass its `version` as `baseVersion` to `publish_site`, so a
   teammate's newer version is never replaced. On a stale-base refusal, read the
@@ -306,7 +311,7 @@ ooda secrets list --org <org-id> [--json]
 
 ```bash
 # Run from the PROJECT ROOT — not the build folder.
-ooda publish [--slug <slug>] [--org <org-id>] [--title "<name>"] [--description "<text>"] [--tags <a,b,c>] [--message "<what changed>"] [--dry-run] [--new] [--json]
+ooda publish [--slug <slug>] [--org <org-id>] [--title "<name>"] [--description "<text>"] [--collection <a,b>] [--message "<what changed>"] [--dry-run] [--new] [--json]
 ```
 
 - Publishes an **already-built** static site — it does **not** run your build.
@@ -385,12 +390,12 @@ with a different one. (A slug that names an *existing* site is different — see
   pages. (Bare `ooda` is a reserved name like the ones above — it publishes as
   `ooda-k3x9`.)
 - **Disallowed words.** Profanity and slurs are blocked in the slug **and** in
-  `--title`/`--description`/`--tags`. No suffix or rename by the CLI fixes
+  `--title`/`--description`. No suffix or rename by the CLI fixes
   these — the publish (or a later metadata update) is refused with a message
   naming the offending field. If a folder name trips this, pick a clean
   `--slug` instead of retrying.
 
-### Title, description & tags (set these!)
+### Title & description (set these!)
 The slug is just the URL. Each site also carries display/search metadata you
 should set on publish (CLI 0.1.25+):
 
@@ -398,10 +403,12 @@ should set on publish (CLI 0.1.25+):
   of the slug. Defaults to a prettified slug if unset, so always pass a real one.
 - **`--description "…"`** — what the site is: its purpose, key features, and
   tech. Be specific and keyword-rich — this powers search across many sites.
-- **`--tags blog,astro,marketing`** — 3–6 short lowercase keywords (kind of
-  site, framework, domain).
-- Title/description/tags are saved to `ooda.json`, so re-publishing keeps them
-  without re-passing the flags.
+- **`--collection <name>`** — file the site in existing collections (CLI
+  0.1.50+). Run `ooda collections` first; see "Collections" below. Tags are
+  retired: `--tags` is ignored with a note.
+- Title/description are saved to `ooda.json`, so re-publishing keeps them
+  without re-passing the flags. Collections live on the site, not in
+  `ooda.json`.
 - **Brand colour — set `"color": "#rrggbb"` in `ooda.json`** (CLI 0.1.29+):
   the dominant accent/brand colour of the site's design. The dashboard tints
   the site's card and preview frame with it. There's no flag — add the field
@@ -510,7 +517,7 @@ proxy (see "Env vars & secrets" below).
 ## Manage published sites
 
 ```bash
-ooda sites list [--query <text>] [--tag <tag>] [--owner <me|email>] [--json]
+ooda sites list [--query <text>] [--collection <name|none>] [--owner <me|email>] [--json]
 ooda sites access <slug> --mode <public|password|login> \
     [--password <pw> | --clear-password] [--clear-mode] [--json]
 ooda sites password <slug> [--json]
@@ -519,11 +526,12 @@ ooda sites delete <slug> [--json]
 
 - **`sites list`** — every site in the org, with its URL, effective access mode,
   and owner. Use `--json` to parse it: the JSON entries also include each site's
-  `title`, `description`, and `tags`, so when you need to find the right site to
+  `title`, `description`, and `collections`, so when you need to find the right site to
   re-publish or update, list with `--json` and match on those rather than
   guessing from the slug. (CLI 0.1.27+.) With many sites, narrow the list with
-  `--query` (title, description, slug, tags, owner), `--tag` or `--owner me`
-  (CLI 0.1.49+). Each entry also has `openComments` and the live version's
+  `--query` (title, description, slug, collection names, owner), `--collection`
+  or `--owner me` (CLI 0.1.50+; `--collection none` finds sites in no
+  collection). Each entry also has `openComments` and the live version's
   `liveVersion`, `liveMessage` and `livePublishedBy`: a site with open comments
   has feedback waiting (see Comments). `canEdit` says whether the user can
   publish to it: they own it, they're one of its editors, or they're an admin.
@@ -537,6 +545,39 @@ ooda sites delete <slug> [--json]
   password-protected site.
 - **`sites delete <slug>`** — unpublish the site and remove its files.
 
+### Collections (CLI 0.1.50+)
+
+```bash
+ooda collections [--json]                        # name, description, site count, and how many are in none
+ooda sites collect <slug> <collection> [--json]  # add a site to an existing collection
+ooda sites uncollect <slug> <collection> [--json]
+ooda collections create <name> [--description <text>]   # org admins only
+ooda collections update <name> [--name <new>] [--description <text>]
+ooda collections delete <name>                   # its sites stay
+```
+
+A collection is a shared group of the org's sites. A site can be in several,
+or none. The value is a small, stable set the whole team recognises, so:
+
+- **Always list first** and choose from what exists. Read each description:
+  it says what belongs there.
+- **Never create a collection without asking the user.** Only org admins can,
+  and a near-duplicate ("Prototype" next to "Prototypes") makes the list
+  worse. If nothing fits, leave the site uncollected and say so; suggest a
+  name and let the user decide.
+- **Good collections answer one of four questions.** Use at most one of each
+  for a site:
+  - *Type:* what it is (Prototypes, Dashboards, Docs).
+  - *Experience:* which part of the product it belongs to (Onboarding,
+    Checkout).
+  - *Team:* who it's for (Design, Finance).
+  - *Initiative:* a time-boxed effort (October workshop, Q4 launch).
+- **Fewer is better.** One or two collections is normal; none is fine.
+- **Never name a collection after a technology** (React, Astro, Tailwind).
+  That's what the description and search are for.
+- An unknown name fails with `unknown_collection` and up to three close
+  `suggestions`: pick one of those, don't retry the typo.
+
 ### Editors (CLI 0.1.48+)
 
 ```bash
@@ -546,8 +587,8 @@ ooda sites share <slug> <email> [--json]  # let a member edit the site
 ooda sites unshare <slug> <email> [--json]
 ```
 
-Editors can publish to the site, pin a version and change its title,
-description and tags. Only the owner and org admins change its access,
+Editors can publish to the site, pin a version, change its title and
+description, and file it in collections. Only the owner and org admins change its access,
 password, variables and editors, so only they can run `share` and `unshare`.
 
 - **Confirm with the user before `share`**: name the person and the site. It
@@ -826,7 +867,7 @@ ooda --help
   itself hits a rule the CLI can't suffix past — `ooda-` template names
   (`ooda-react-blog`) used to fail this way, which is fixed server-side.
 - **"… contains a word that isn't allowed on ooda.run"** → the slug, title,
-  description, or tags tripped the banned-word filter. A suffix won't help —
+  or description tripped the banned-word filter. A suffix won't help —
   choose a different name for the flagged field. Don't retry the same value.
 - **The short `{site}.{org}.ooda.run` address fails TLS right after publishing**
   → the organisation's subdomain is new and its certificate is still being
