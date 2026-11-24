@@ -39,7 +39,7 @@ In Claude or ChatGPT chat you may have no shell, so no CLI. If your tools
 include `publish_site`, `list_sites`, `get_site_files`, `set_access`,
 `set_variable`, `delete_site`, `get_comments`, `reply_to_comment`,
 `resolve_comment`, `list_members`, `get_sharing`, `share_site`,
-`list_collections`, `collect_site` and `uncollect_site` from ooda, the user has connected ooda, and you
+`list_collections`, `collect_site`, `uncollect_site` and `list_variables` from ooda, the user has connected ooda, and you
 use those tools instead of everything below. The connection already covers one
 org and is signed in, so skip Install and Authentication.
 
@@ -61,9 +61,12 @@ org and is signed in, so skip Install and Authentication.
   teammate's newer version is never replaced. On a stale-base refusal, read the
   files again and redo the change.
 - **Access, variables, delete:** `set_access` (`login`, `password`, `public`,
-  `org_default`); `set_variable` (write-only, nothing reads a value back; pass
-  `slug` for one site, leave it out for an org-wide value, which only admins
-  may set); `delete_site` only after the user confirms.
+  `org_default`); `list_variables` (names, kinds and descriptions, never
+  values; without `slug` the org-wide ones, which every site receives) before
+  asking the user for a key the org may already have; `set_variable`
+  (write-only, nothing reads a value back; pass `slug` for one site, leave it
+  out for an org-wide value, which only admins may set); `delete_site` only
+  after the user confirms.
 - **Editors:** `get_sharing` shows a site's owner and editors. To let a
   teammate edit a site, find their exact email with `list_members`, **confirm
   the person and the site with the user**, then call `share_site` (`role:
@@ -691,21 +694,24 @@ the CLI, non-interactively. There are two kinds:
 ooda secrets set API_URL=https://api.example.com --env --description "API base URL"   # global config (admin)
 ooda secrets set STRIPE_KEY="$STRIPE_KEY" --site <slug> --description "Stripe live key" # this site only (private; shell-expanded — see below)
 ooda secrets list                                                # the global catalog: key, kind + description
-ooda secrets list --site <slug>                                  # masked: this site's keys (used global + private)
-ooda secrets use KEY --site <slug>                               # record that this site uses a global var
-ooda secrets rm KEY [--site <slug>] [--force]                    # global rm blocked while in use
+ooda secrets list --site <slug>                                  # masked: this site's keys (every global + private)
+ooda secrets use KEY --site <slug>                               # record that this site needs a global var
+ooda secrets rm KEY [--site <slug>] [--force]                    # --force if a site declared it
 ```
 
 - **Global vs per-site.** With no scope flag an **org admin** sets a *global*
-  var — a flat, org-wide namespace of shared config/secrets. A site only
-  **receives** a global once it's recorded as **using** it (`ooda secrets use`, or
-  the manifest via `secrets check`), so globals don't silently leak everywhere.
-  With `--site <slug>` the site's owner (or an admin) sets a *private* value
-  pinned to that one site, which overrides a global of the same name.
+  var — a flat, org-wide namespace of shared config/secrets that **every site
+  in the org receives**, with nothing to opt into. So an org-wide `--env` value
+  is in every site's `window.__OODA_ENV__`. With `--site <slug>` the site's
+  owner (or an admin) sets a *private* value pinned to that one site, which
+  overrides a global of the same name. `ooda secrets use` and the manifest (via
+  `secrets check`) record which sites need a global, so deleting it asks for
+  `--force`.
 - **Reuse globals when going live.** Before publishing, run `ooda secrets list
   --json` to see the global catalog (each var's `key`, `kind` + `description`,
-  never values), suggest the relevant ones to the user, and `ooda secrets use
-  <KEY> --site <slug>` to adopt them — don't re-create values that already exist.
+  never values). The site already has every one of them, so use the existing
+  key names in the code, and record the ones it needs with `ooda secrets use
+  <KEY> --site <slug>`. Don't re-create values that already exist.
 - **There is no `reveal` command — ever.** Values are write-only from the CLI
   (the CLI is LLM-driven, so any printed value would leak). To **read** a value
   back, an admin reveals it in the dashboard. Don't try to print or echo secrets.
@@ -772,11 +778,11 @@ agent knows what to ask for. Each entry has a `key`, optional `kind` (`"env"` |
 ```
 
 To wire them up, run `ooda secrets check --json --apply-defaults` (publish first so a
-site slug exists). It records usage of any declared key already provided as a
-**global** var, applies any entry with a `default` (as a per-site private value),
+site slug exists). It records which declared keys a **global** var already
+provides, applies any entry with a `default` (as a per-site private value),
 and returns the still-missing required keys, each with its `key`, `kind`,
 `description`, and `example`. For each missing one, first check whether a global
-already covers it (`ooda secrets list --json`) and `ooda secrets use` it.
+already covers it (`ooda secrets list --json`); the site already receives it.
 Otherwise set it per-site — for an `"env"` entry, ask the user for the value
 (show its `description`/`example`) and pass it inline with `--env`; for a
 `"secret"` entry, use the transcript-safe flow above (the user runs the command
