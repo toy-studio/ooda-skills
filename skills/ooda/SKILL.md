@@ -757,7 +757,10 @@ fetch("/__ooda/proxy/openai/v1/chat/completions", {
 
 It works for any Bearer-auth API (not just OpenAI) and supports streaming. The proxy
 inherits the site's access mode, so password/login-gate a public demo
-(`ooda sites access <slug> --mode password|login`) and use a spend-capped key.
+(`ooda sites access <slug> --mode password|login`) and use a spend-capped key. An
+org-wide proxy key works only on sites that need a login or password; on a
+public site the proxy refuses it with a 403, so set the site's own
+`PROXY_<NAME>_URL` and `PROXY_<NAME>_KEY` there instead.
 
 ### Declared secrets (`ooda.json` `secrets` manifest)
 
